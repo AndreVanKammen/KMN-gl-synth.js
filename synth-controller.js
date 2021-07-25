@@ -9,7 +9,7 @@ import SystemShaders from './webgl-synth-shaders.js';
 const emptyArray = new Float32Array();
 
 const defaultOptions = {
-  keepInBuffer: 2*1024,
+  keepInBuffer: 2 * 1024,
   // updateInterval: 1,
   maxNoteLength: 30,
   audioOutput: {
@@ -22,9 +22,10 @@ const defaultOptions = {
   }
 }
 class IAudioTrack {
-  length = 0;
-  leftSamples = [];
-  rightSamples = [];
+  /** @type {Float32Array} */
+  leftSamples = null;
+  /** @type {Float32Array} */
+  rightSamples = null;
 }
 
 class IAudioTracks {
