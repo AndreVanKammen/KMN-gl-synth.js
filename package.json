@@ -1,0 +1,11 @@
+{
+  "name": "gl-synth",
+  "version": "0.0.9",
+  "description": "The core files of shadersynth, a synthesizer that uses WebGL shaders to create sound",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {},
+  "type": "module",
+  "author": "André van Kammen",
+  "license": "CR0(NC)"
+}

@@ -24,9 +24,9 @@ const mixdownShader = '#mixdown';
 // Got to 3.5GB of memory usage, more seems to crash webgl in the page
 const defaultOptions = {
   sampleRate: 44100,
-  bufferWidth: 1024,
+  bufferWidth: 8192,
   bufferHeight: 1024,
-  bufferCount: 16, // Is for source and target so 2 times as big
+  bufferCount: 4, // Is for source and target so 2 times as big
   channelCount: 2 // Actualy only 2 will work for now because all shaders are stereo
 };
 

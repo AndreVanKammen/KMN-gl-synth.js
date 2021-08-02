@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "outDir": "trash/",
+    "module": "es6",
+    "target": "esnext",
+    "sourceMap": false,
+    "checkJs": true,
+    "isolatedModules": false,
+    "noImplicitAny": false,
+    "jsx": "react",
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "downlevelIteration": true    
+  },  
+  "include": [
+    "/**/*",
+    "/*"]
+}

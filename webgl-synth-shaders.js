@@ -423,7 +423,7 @@ void main(void) {
   int tliIx = vertexIx / bufferWidth;
   lineX = (vertexIx % bufferWidth);
 
-  vec4 tliData = texelFetch(tliDataTexture, ivec2(tliIx % 1024, tliIx / 1024), 0);
+  vec4 tliData = texelFetch(tliDataTexture, ivec2(tliIx % bufferWidth, tliIx / bufferWidth), 0);
   texNr = int(tliData.x) % 2;
   
   int lineIx = int(tliData.y);
