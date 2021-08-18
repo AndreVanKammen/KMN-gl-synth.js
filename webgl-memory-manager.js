@@ -83,7 +83,7 @@ export class TrackLineInfo {
     this.passNr = ~~0;      // Which pass are we processed in (this determines if we use buffer A or B)
     this.start = ~~0;       // The start of it's buffers
     this.count = ~~0;       // The total number of buffers including outputCount
-    this.outputCount = ~~1; // The number of future buffers tha can't be used for history (if sampleData
+    this.outputCount = ~~1; // The number of future buffers that can't be used for history (if sampleData
                             // The number of Frequency output buffers if DFT
                             // they are used for constructing audio from inverse DFT with overlaps
                             // A shader with this TLI as output should be rendered for this many lines

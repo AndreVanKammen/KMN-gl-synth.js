@@ -156,6 +156,13 @@ export class SynthBaseEntry {
     this.synth = null; // Is filled by the synth at process time
   }
 
+  /**
+   * Updates the buffer allocations for the whole effect path within the mixer
+   * @param {WebGLSynth} synth 
+   * @param {SynthMixer} mixer 
+   * @param {number} passNr 
+   * @returns Last 
+   */
   updateBuffers(synth, mixer, passNr) {
     if (mixer && (mixer.effects.length>0)) {
       while (this.buffers.length < (mixer.effects.length + 1)) {
