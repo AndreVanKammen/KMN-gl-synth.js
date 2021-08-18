@@ -5,11 +5,10 @@ export class StreamBuffer {
   /**
    * 
    * @param {WebGLSynth} synth 
-   * @param {SynthPlayData} playData 
    */
   constructor (synth, playData) {
     this.synth = synth;  
-    this.playData = playData;
+    this.playData = synth.playData;
 
     this.historySamples = 32; // TODO: CHANGING THIS TO 16 or 1024 INFLUENCES BEAT DETECTION IN HURRICANE
     this.streamBlocks = 4;
@@ -35,15 +34,17 @@ export class StreamBuffer {
     this.lastChange = 0;
   }
 
-  getTrackNr(note) {
-    this.streamData[this.streamUsed % this.streamCount] = {
+  getStreamNr(note) {
+    const streamNr = this.streamUsed % this.streamCount; 
+    this.streamData[streamNr] = {
       trackNr: ~~note,
       lastOffset: ~~0,
       lastTime: Infinity,
       channelCount: ~~2,
       sampleRate: ~~44100
     };
-    return this.streamUsed++ % this.streamCount;
+    this.streamUsed++;
+    return streamNr;
   }
 
   fill(time, streamNr) {

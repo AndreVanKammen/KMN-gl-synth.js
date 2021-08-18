@@ -6,7 +6,6 @@ import getWebGLContext from '../KMN-utils.js/webglutils.js';
 import SystemShaders from './webgl-synth-shaders.js';
 import SynthPlayData, { ControlHandler, SynthBaseEntry, SynthMixer, SynthNote } from './webgl-synth-data.js';
 import { otherControls } from './otherControls.js';
-import { StreamBuffer } from './stream-buffer.js';
 import { WebGLMemoryManager } from './webgl-memory-manager.js';
 
 // https://stackoverflow.com/questions/53562825/glreadpixels-fails-under-webgl2-in-chrome-on-mac
@@ -158,11 +157,6 @@ class WebGLSynth {
     this.memoryManager = new WebGLMemoryManager(this);
 
     this.addBackBufferToSampleFBO(); // 20ms< for 1000 times
-  }
-
-  createStreamBuffer() {
-    this.streamBuffer = new StreamBuffer(this, this.playData);
-    return this.streamBuffer;
   }
 
   // This is the thing you fill with notes to play
@@ -509,10 +503,11 @@ class WebGLSynth {
     let attrOfs = 0;
     let backBufferLines = undefined;
 
-    // TODO: Consider: There can be only streamBuffer for now (it has 128 tracks, should be enough)
     const shaderName = tracks[0].shader;
     const isEffect = tracks[0].isEffect;
-    const streamBuffer = shaderName === 'playInput' ? this.streamBuffer : null;
+    // Streambuffer comes from the 1st entry, this should al be the same shader and streambuffer
+    // TODO: Make sure that calculateShader get called per streambuffer instance
+    const streamBuffer = tracks[0].entry.mixer.streamBuffer;
 
     for (let trackIX = 0; trackIX < tracks.length; trackIX++) {
       let entry = tracks[trackIX].entry;
@@ -530,13 +525,13 @@ class WebGLSynth {
       let pitch = entry.channelControl.getControlAtTime(controlTime , otherControls.pitch, 0.0) || 0.0;
 
       if (streamBuffer) {
-        if (entry.trackNr < 0) {
-          entry.trackNr = streamBuffer.getTrackNr(entry.note);
-          entry.note = entry.trackNr;
+        if (entry.streamNr < 0) {
+          entry.streamNr = streamBuffer.getStreamNr(entry.note);
+          // entry.note = entry.streamNr;
           // entry.phaseTime = entry.time;// - entry.audioOffset;
           // console.log('tracknr assigned: ',entry.trackNr);
         }
-        streamBuffer.fill(this.synthTime - entry.phaseTime + entry.audioOffset, entry.trackNr);
+        streamBuffer.fill(this.synthTime - entry.phaseTime + entry.audioOffset, entry.streamNr);
         // console.log('Volume: ',entry.channelControl.getControlAtTime(controlTime , 7, 0.0));
       }
       for (let oIX = 0; oIX < tli_out.outputCount; oIX++) {
@@ -579,7 +574,7 @@ class WebGLSynth {
         a1[attrOfs + 7] = entry.releaseTime;
 
         // Parameters that change per line so they can't be done in uniforms
-        a2[attrOfs + 0] = a2[attrOfs + 4] = entry.note;
+        a2[attrOfs + 0] = a2[attrOfs + 4] = (!!streamBuffer) ? entry.streamNr : entry.note;
         a2[attrOfs + 1] = a2[attrOfs + 5] = entry.velocity;
 
         entry.updateNoteControls && entry.updateNoteControls(this.synthTime);
@@ -1016,11 +1011,11 @@ class WebGLSynth {
     this.totalEntryTime += stop - start;
 
     // TODO: make sync for multiple timeslots so we can work in parralel
-    if (this.recordAnalyze) {
-      this.webGLSync = null;
-    } else {
+    // if (this.recordAnalyze) {
+    //   this.webGLSync = null;
+    // } else {
       this.webGLSync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
-    }
+    // }
     this.samplesCalculated = true;
     return currentEntries.length > 0;
   }
@@ -1035,9 +1030,11 @@ class WebGLSynth {
   getCalculatedSamples() {
     this.samplesCalculated = false;
     const gl = this.gl;
+    const bufferData = this.outputBuffer;
+    bufferData.fill(0);
 
     if (!this.webGLSync) {
-      return [];
+      return bufferData;
     }
     
     gl.clientWaitSync(this.webGLSync, 0, 0);
@@ -1101,9 +1098,6 @@ class WebGLSynth {
     //     console.log(this.averageRead);
     //   }
     // }
-
-    const bufferData = this.outputBuffer;
-    bufferData.fill(0);
 
     let sourceIx = 0;
     let destIx = 0;

@@ -5,8 +5,8 @@
 import WebGLSynth from './webgl-synth.js';
 import AudioOutput from './audio-output-worklet.js';
 import SystemShaders from './webgl-synth-shaders.js';
+import defer from '../KMN-utils.js/defer.js';
 
-const emptyArray = new Float32Array();
 
 const defaultOptions = {
   keepInBuffer: 2 * 1024,
@@ -21,17 +21,6 @@ const defaultOptions = {
     // webgl synth defaults are defined in webgl-synth.js
   }
 }
-class IAudioTrack {
-  /** @type {Float32Array} */
-  leftSamples = null;
-  /** @type {Float32Array} */
-  rightSamples = null;
-}
-
-class IAudioTracks {
-  /** @type {IAudioTrack[]} */
-  tracks = []
-}
 
 // Handles all interaction betweeen  midiNotes => webglsynth => audioOutput
 class SynthController {
@@ -45,9 +34,9 @@ class SynthController {
 
     this.playData = null;
 
-    this.isStreaming = false;
-    this.isRecording = false;
-    this.audioBuffers = [];
+    // this.isStreaming = false;
+    // this.isRecording = false;
+    // this.audioBuffers = [];
     this.calcTimeAvg = 1;
     this.latencyTimeAvg = 1;
 
@@ -100,7 +89,7 @@ class SynthController {
     for (let ix=0; ix<20; ix++) {
       ++this.analyzeFrameCount;
       if (!this.webGLSynth.calculateSamples()) {
-        outOfNotes = true;
+        // outOfNotes = true;
         break
       }
       this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
@@ -108,9 +97,9 @@ class SynthController {
     }
 
     if (++this.analyzeFrameCount < 10 || !outOfNotes) {
-      setTimeout(() => {
+      defer(() => {
         this.getNextBuffer();
-      }, 1);
+      });
     } else {
       this.webGLSynth.stopRecordAnalyze();
       console.log('Processed ',this.analyzeFrameCount,' audio frames in ',(performance.now() - this.speedTestStart).toFixed(2),'ms')
@@ -130,9 +119,9 @@ class SynthController {
 
       this.webGLSynth.calculateSamples();
       this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
-      setTimeout(() => {
+      defer(() => {
         this.getNextBuffer();
-      }, 0);
+      });
     });
     return result;
   }
@@ -154,38 +143,39 @@ class SynthController {
     console.log('Processed ',loopCount,' audio frames in ',(stop-start).toFixed(2),'ms')
   }
 
-  /**
-   * Set's the track for us by the playinput shader
-   * TODO rename playinput to plattrack
-   * @param {IAudioTracks} audioTracks 
-   */
-  setAudioStreams(audioTracks) {
-    this.ensureStarted();
-    // TODO: Make better system then this hack, if you call this twice it weill mess up
-    this.streamBuffer = this.webGLSynth.createStreamBuffer();
-    // TODO: Every track can have it's own sampleRate
-    // streamBuffer.sampleRate = audioData.sampleRate;
-    // TODO: Consider other then stereo?
-    this.divider = 0;
-    this.streamBuffer.onGetData = (buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) => {
-      let ofs = bufferOffset;
-      let sNr = startSampleNr;
-      let audioTrack = audioTracks.tracks[trackNr % audioTracks.tracks.length];
-      let bufStart = streamNr * streamFloatSize;
-      let l = audioTrack.leftSamples || emptyArray; 
-      let r = audioTrack.rightSamples || emptyArray; 
-      // if ((this.divider++ & 0x180) === 0x180) {
-      //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
-      // }
-      if ((bufStart + ofs) % 2 !== 0) {
-        debugger
-      }
-      for (let ix = 0; ix < count; ix++) {
-        buffer[bufStart + (ofs++ % streamFloatSize)] = l[sNr] || 0.0;
-        buffer[bufStart + (ofs++ % streamFloatSize)] = r[sNr++] || 0.0;
-      }
-    };
-  }
+  // /**
+  //  * Set's the track for us by the playinput shader
+  //  * TODO rename playinput to plattrack
+  //  * @param {IAudioTracks} audioTracks 
+  //  */
+  // setAudioStreams(audioTracks) {
+  //   this.ensureStarted();
+  //   // TODO: Make better system then this hack, if you call this twice it weill mess up
+  //   this.streamBuffer = this.webGLSynth.createStreamBuffer();
+  //   // TODO: Every track can have it's own sampleRate
+  //   // streamBuffer.sampleRate = audioData.sampleRate;
+  //   // TODO: Consider other then stereo?
+  //   this.divider = 0;
+  //   this.streamBuffer.onGetData = audioTracks.getData.bind(audioTracks);
+  //   (buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) => {
+  //     let ofs = bufferOffset;
+  //     let sNr = startSampleNr;
+  //     let audioTrack = audioTracks.tracks[trackNr % audioTracks.tracks.length];
+  //     let bufStart = streamNr * streamFloatSize;
+  //     let l = audioTrack.leftSamples || emptyArray; 
+  //     let r = audioTrack.rightSamples || emptyArray; 
+  //     // if ((this.divider++ & 0x180) === 0x180) {
+  //     //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
+  //     // }
+  //     if ((bufStart + ofs) % 2 !== 0) {
+  //       debugger
+  //     }
+  //     for (let ix = 0; ix < count; ix++) {
+  //       buffer[bufStart + (ofs++ % streamFloatSize)] = l[sNr] || 0.0;
+  //       buffer[bufStart + (ofs++ % streamFloatSize)] = r[sNr++] || 0.0;
+  //     }
+  //   };
+  // }
 
   handleAudioDataRequest () {
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer || !this.webGLSynth.samplesCalculated) {

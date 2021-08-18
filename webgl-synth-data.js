@@ -2,7 +2,9 @@
 // Licensed under CC BY-NC-SA 
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
+import defer from '../KMN-utils.js/defer.js';
 import { otherControls } from './otherControls.js';
+import { StreamBuffer } from './stream-buffer.js';
 import { TrackLineInfo } from './webgl-memory-manager.js';
 import { SynthExecutePlanner } from './webgl-synth-execute-plan.js';
 import WebGLSynth from './webgl-synth.js';
@@ -12,6 +14,8 @@ const maxControlCount = 1024;
 // TODO in the case of notes, silence could also end the note, but that is only known at play time
 // TODO this extra time can be calculated from decayTime + max(effectsTime)
 const extraAfterRelease = 4.5; // Give it an extra time to fade out in seconds after release
+
+const emptyFloat64Array = new Float32Array();
 
 // const streamingTrackData = {
 //   time: 0,
@@ -232,6 +236,43 @@ export class SynthMixer extends SynthBaseEntry {
     /** @type {Array<EffectShaderInfo>} */
     this.effects = [];
     this.mixerHash = ++mixerHash;
+
+    // For handling samples and audio tracks
+    /** @type {StreamBuffer} */
+    this.streamBuffer = null;
+  }
+
+  /**
+   * Set's the sample/audiotracks for us by the shader
+   * TODO rename playinput to plattrack
+   * // @param {IAudioTracks} audioTracks 
+   */
+  setAudioStreams(audioTracks, synth) {
+    // TODO: Move the buffer filling to the audiottrack implementation
+    this.streamBuffer = new StreamBuffer(synth);
+    // TODO: Every track can have it's own sampleRate or does decode fix that for us?
+    // streamBuffer.sampleRate = audioData.sampleRate;
+    // TODO: Consider other then stereo?
+    this.divider = 0;
+    this.streamBuffer.onGetData = // audioTracks.getData.bind(audioTracks);
+      (buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) => {
+      let ofs = bufferOffset;
+      let sNr = startSampleNr;
+      let audioTrack = audioTracks.tracks[trackNr % audioTracks.tracks.length];
+      let bufStart = streamNr * streamFloatSize;
+      let l = audioTrack.leftSamples || emptyFloat64Array; 
+      let r = audioTrack.rightSamples || emptyFloat64Array; 
+      // if ((this.divider++ & 0x180) === 0x180) {
+      //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
+      // }
+      if ((bufStart + ofs) % 2 !== 0) {
+        debugger
+      }
+      for (let ix = 0; ix < count; ix++) {
+        buffer[bufStart + (ofs++ % streamFloatSize)] = l[sNr] || 0.0;
+        buffer[bufStart + (ofs++ % streamFloatSize)] = r[sNr++] || 0.0;
+      }
+    };
   }
 
   addEffect(name) {
@@ -258,7 +299,7 @@ export class SynthNote extends SynthBaseEntry {
     this.note = data.note;
     this.velocity = data.velocity;
     this.audioOffset = data.audioOffset || 0;
-    this.trackNr = -1;
+    this.streamNr = -1;
     this.time = 0;
     this.phaseTime = 0;
 
@@ -338,7 +379,7 @@ class SynthPlayData {
     this.channelControls = {};
 
     this.executePlanner = new SynthExecutePlanner(this);
-    this.invalidateTimer = 0;
+    this.invalidateSceduled = false;
     /** @type {Map<Object,number>}*/
     this.callbacks = new Map();
 
@@ -454,11 +495,12 @@ class SynthPlayData {
   }
 
   invalidatePlan() {
-    if (!this.invalidateTimer) {
-      this.invalidateTimer = setTimeout(() => {
+    if (!this.invalidateSceduled) {
+      this.invalidateSceduled = true;
+      defer(() => {
         this.executePlanner.rebuild();
-        this.invalidateTimer = 0;
-      }, 0);
+        this.invalidateSceduled = false;
+      });
     }
   }
 
