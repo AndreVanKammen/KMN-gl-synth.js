@@ -15,8 +15,6 @@ const maxControlCount = 1024;
 // TODO this extra time can be calculated from decayTime + max(effectsTime)
 const extraAfterRelease = 4.5; // Give it an extra time to fade out in seconds after release
 
-const emptyFloat64Array = new Float32Array();
-
 // const streamingTrackData = {
 //   time: 0,
 //   note: 0,
@@ -154,6 +152,14 @@ export class SynthBaseEntry {
     this.buffers = [];
 
     this.synth = null; // Is filled by the synth at process time
+
+    this._finishResolvers = [];
+  }
+
+  async waitForFinished() {
+    return new Promise((resolve) => {
+       this._finishResolvers.push(resolve);
+    });
   }
 
   /**
@@ -210,6 +216,10 @@ export class SynthBaseEntry {
       }
       this.buffers = [];
     }
+    for (let resolver of this._finishResolvers) {
+      resolver();
+    }
+    this._finishResolvers = [];
   }
 }
 export class SynthShaderInfo {
@@ -235,6 +245,9 @@ class InputShaderInfo extends SynthShaderInfo {
   }
 }
 
+class IAudioTracks {
+  getData = (buffer, streamNr, trackNr, trackSize2, bufferOffset, startSampleNr, count) => {};
+}
 let mixerHash = 123;
 export class SynthMixer extends SynthBaseEntry {
   constructor (mixer, inputShaderName) {
@@ -252,7 +265,7 @@ export class SynthMixer extends SynthBaseEntry {
   /**
    * Set's the sample/audiotracks for us by the shader
    * TODO rename playinput to plattrack
-   * // @param {IAudioTracks} audioTracks 
+   *  @param {IAudioTracks} audioTracks 
    */
   setAudioStreams(audioTracks, synth) {
     // TODO: Move the buffer filling to the audiottrack implementation
@@ -261,25 +274,7 @@ export class SynthMixer extends SynthBaseEntry {
     // streamBuffer.sampleRate = audioData.sampleRate;
     // TODO: Consider other then stereo?
     this.divider = 0;
-    this.streamBuffer.onGetData = // audioTracks.getData.bind(audioTracks);
-      (buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) => {
-      let ofs = bufferOffset;
-      let sNr = startSampleNr;
-      let audioTrack = audioTracks.tracks[trackNr % audioTracks.tracks.length];
-      let bufStart = streamNr * streamFloatSize;
-      let l = audioTrack.leftSamples || emptyFloat64Array; 
-      let r = audioTrack.rightSamples || emptyFloat64Array; 
-      // if ((this.divider++ & 0x180) === 0x180) {
-      //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
-      // }
-      if ((bufStart + ofs) % 2 !== 0) {
-        debugger
-      }
-      for (let ix = 0; ix < count; ix++) {
-        buffer[bufStart + (ofs++ % streamFloatSize)] = l[sNr] || 0.0;
-        buffer[bufStart + (ofs++ % streamFloatSize)] = r[sNr++] || 0.0;
-      }
-    };
+    this.streamBuffer.onGetData = audioTracks.getData.bind(audioTracks);
   }
 
   addEffect(name) {
@@ -295,9 +290,24 @@ export class SynthMixer extends SynthBaseEntry {
     }
   }
 }
+class NoteData {
+  note = ~~0;
+  channel = ~~0;
+  velocity = 1.0;
+  audioOffset = 0.0;
+}
 
 // Base for playing notes trough the synth
 export class SynthNote extends SynthBaseEntry {
+  /**
+   * 
+   * @param {SynthPlayData} owner 
+   * @param {number} time 
+   * @param {string} timeZone 
+   * @param {SynthMixer} mixer 
+   * @param {Partial<NoteData>} data 
+   * @param {*} channelControl 
+   */
   constructor (owner, time, timeZone, mixer, data, channelControl) {
     super(mixer);
     this.owner = owner;
@@ -471,6 +481,15 @@ class SynthPlayData {
           (this.channelControls[key] = new ControlHandler(this, timeZone));
   }
 
+  /**
+   * Adds a note to be played by the synth
+   * @param {number} time Time within this timezon for the note to start 
+   * @param {string} timeZone Timezone for this note
+   * @param {number} channel Midi channel to play in (usaed for controls)
+   * @param {SynthMixer} mixer The mixer to use for playing
+   * @param {Partial<NoteData>} noteData Data for the note
+   * @returns {SynthNote}
+   */
   addNote(time, timeZone, channel, mixer, noteData) {
 
     // TODO: Remove notedata if possible its vague

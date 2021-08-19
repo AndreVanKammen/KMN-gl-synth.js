@@ -45,8 +45,6 @@ class WebGLSynth {
     this.stopOutput = false;
     this.recordAnalyze = false;
 
-    this.streamBuffer = null;
-
     if ((!this.options.getSynthShaderCode) || 
         (!this.options.getEffectShaderCode)) {
       console.error('No shader code getter suplied!')
