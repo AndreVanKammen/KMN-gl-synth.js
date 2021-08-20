@@ -85,7 +85,7 @@ class SynthController {
   getNextBuffer() {
     // this.webGLSynth.gl.clientWaitSync(this.webGLSynth.webGLSync, 0, 10);
     // this.webGLSynth.getCalculatedSamples();
-    let outOfNotes = false;
+    // let outOfNotes = false;
     for (let ix=0; ix<20; ix++) {
       ++this.analyzeFrameCount;
       if (!this.webGLSynth.calculateSamples()) {
@@ -96,7 +96,7 @@ class SynthController {
       this.webGLSynth.processCount++;
     }
 
-    if (++this.analyzeFrameCount < 10 || !outOfNotes) {
+    if (++this.analyzeFrameCount < 10 || !this.haltAnalyze) {
       defer(() => {
         this.getNextBuffer();
       });
@@ -109,10 +109,15 @@ class SynthController {
     }
   }
 
+  stopAnalyze() {
+    this.haltAnalyze = true;
+  }
+
   async runAnalyze() {
     let result = new Promise((resolve) => {
       this.audioOutput.onCalcBuffer = undefined;
 
+      this.haltAnalyze = false;
       this.speedTestStart = performance.now();
       this.analyzeFrameCount = 0;
       this.analyzeResolver = resolve;
