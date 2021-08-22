@@ -39,6 +39,7 @@ class SynthController {
     // this.audioBuffers = [];
     this.calcTimeAvg = 1;
     this.latencyTimeAvg = 1;
+    this.currentLatencyTime = 1;
 
     this.handleAudioDataRequestBound = this.handleAudioDataRequest.bind(this);
 
@@ -196,8 +197,8 @@ class SynthController {
 
       this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
     }
-    this.latencyTimeAvg = this.latencyTimeAvg * 0.99 +
-                          0.01 * (((this.audioOutput.dataInBuffer) / this.sampleRate) * 1000);
+    this.currentLatencyTime = (((this.audioOutput.dataInBuffer) / this.sampleRate) * 1000);
+    this.latencyTimeAvg = this.latencyTimeAvg * 0.99 + 0.01 * this.currentLatencyTime;
   }
   getSynthShaderCode(name) {
     // Default to system shader stuff
