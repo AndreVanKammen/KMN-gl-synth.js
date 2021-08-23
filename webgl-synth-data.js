@@ -208,6 +208,7 @@ export class SynthBaseEntry {
   }
 
   dispose() {
+    this.isFinished = true;
     if (this.synth) {
       for (let ix = 0; ix < this.buffers.length; ix++) {
         this.buffers[ix]
@@ -470,9 +471,9 @@ class SynthPlayData {
     // }
   }
 
-  syncTime(timeZone, time) {
+  syncTime(timeZone, time, thight = false) {
     let synthTime = this.synth.synthTime;
-    this.timeOffsets[timeZone] = synthTime - time + this.synth.bufferTime * 2;
+    this.timeOffsets[timeZone] = synthTime - time + (thight ? 0 : this.synth.bufferTime * 2);
   }
 
   getChannelControl(timeZone, channel) {
@@ -585,7 +586,6 @@ class SynthPlayData {
       } else {
         if (!entry.isFinished) {
           entry.dispose()
-          entry.isFinished = true;
           this.startIx = 0; // if set to ix some notes wont be freed
         }
       }
