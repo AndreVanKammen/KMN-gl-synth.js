@@ -1107,7 +1107,7 @@ class WebGLSynth {
       sourceIx += ~~force4Components
     }
 
-    this.automaticVolume = true;
+    this.automaticVolume = false;
     if (this.automaticVolume) {
       // Automatic volume correction
       let maxLevel = 0.0;
