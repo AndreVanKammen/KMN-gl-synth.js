@@ -36,7 +36,6 @@ const float pi = 3.141592653589793;
 const float pi2 = 6.283185307179586;
 
 float getControl(int x) {
-  // TODO interpolation
   vec4 controlData = texelFetch(controlTexture, ivec2(x,0), 0);
   return mix(controlData.x, controlData.z, round(pixel_position.x) / float(bufferWidth));
 }
@@ -56,6 +55,7 @@ const float bufferTime = (sampleTime * float(bufferWidth));
 #define pan getControl(10)
 #define program getControl(128)
 #define pitch getControl(129)
+#define pitchRange getControl(131)
 #define pressure getControl(130)
 
 float noise(float phase) {
