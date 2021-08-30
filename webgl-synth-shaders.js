@@ -308,7 +308,7 @@ uniform int inputTextureHeight;
 const int streamBlocks = 4; // TODO get for streambuffer
 
 const int channelCount = 2; // TODO get for track
-const int streamSampleRate = 44100; // TODO get for track
+const int streamSampleRate = sampleRate; // TODO get for track
 
 const int samplesPerVec4 = 4 / channelCount;
 const int streamVec4Count = (streamBlocks * bufferWidth);
