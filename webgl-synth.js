@@ -749,6 +749,10 @@ class WebGLSynth {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    if (tracks.length === 0) {
+      return;
+    }
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
     
@@ -814,6 +818,10 @@ class WebGLSynth {
     } else {
       gl.viewport(0, 0, this.bufferWidth, this.bufferHeight);
       gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    if (tracks.length === 0) {
+      return;
     }
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
