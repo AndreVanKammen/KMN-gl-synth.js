@@ -1,7 +1,7 @@
 // To bad i have to go through converting a string to a blob to a dataurl just to be able to keep the code together
 // this is realy the ugly part of javascript
 // Also bad that I have to write this piece of code to just stream sample buffers, overengineered webaudio api!
-export const JustStreamMyBuffers = URL.createObjectURL(new Blob([`//js
+export const JustStreamMyBuffers = URL.createObjectURL(new Blob([`
 // TODO: use SharedArrayBuffer
 class JustStreamMyBuffers extends AudioWorkletProcessor {
   constructor() {
@@ -13,6 +13,7 @@ class JustStreamMyBuffers extends AudioWorkletProcessor {
     this.bufferEmptyCount = 0;
     this.processCount = 0;
     this.postBufferSize = 1024;
+    this.lastPostTime = 0;
   }
 
   onmessage(event) {
@@ -60,16 +61,21 @@ class JustStreamMyBuffers extends AudioWorkletProcessor {
     //We get called about 344 times per seconds (44100/128 samples) so let divide by 4
     // if ((this.processCount++ & 0x03) === 0) {// || dataInBuffer < 512) {
     // if (dataInBuffer < 1024) {
-    if ((this.processCount++ & 0x03) === 0) {// && dataInBuffer < 1024) {
-      this.port.postMessage({
-        bufferLength: dataInBuffer,
-        bufferEmptyCount: this.bufferEmptyCount
-      });
+    if (dataInBuffer < 1024 * 6 || (this.processCount++ & 0x1f) === 0) {
+      let newTime = globalThis.currentTime;
+      // Max once per 20ms
+      if (newTime - this.lastPostTime > 0.020) {
+        this.lastPostTime = newTime;
+        this.port.postMessage({
+          bufferLength: dataInBuffer,
+          bufferEmptyCount: this.bufferEmptyCount,
+          contextTimeOnPost: this.lastPostTime
+        });
+      }
     }
     return true;
   }
 }
 
 registerProcessor("audio-output", JustStreamMyBuffers);
-// !js
 `], { type:'application/javascript' }));

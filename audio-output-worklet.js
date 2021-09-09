@@ -29,6 +29,7 @@ const defaultOptions = {
   onWorkerMessage(evt) {
     this.dataInBuffer = evt.data.bufferLength;
     this.bufferEmptyCount = evt.data.bufferEmptyCount;
+    this.contextTimeOnPost = evt.data.contextTimeOnPost;
     if (this.onCalcBuffer) {
       this.onCalcBuffer();
     }

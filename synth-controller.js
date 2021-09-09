@@ -42,7 +42,7 @@ class SynthController {
     this.currentLatencyTime = 1;
 
     this.handleAudioDataRequestBound = this.handleAudioDataRequest.bind(this);
-
+    this.synthOutputTimeDiff = 0.0;
     this.streamMixer = undefined;
   }
 
@@ -184,7 +184,24 @@ class SynthController {
   // }
 
   handleAudioDataRequest () {
-    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer || !this.webGLSynth.samplesCalculated) {
+    let newOutputTimeDiff = 
+      (this.webGLSynth.synthTime - (this.audioOutput.dataInBuffer) / this.sampleRate) -
+      this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
+    
+    if (Math.abs(this.synthOutputTimeDiff - newOutputTimeDiff) > 0.5) {
+      console.log('resync time',
+        this.synthOutputTimeDiff - newOutputTimeDiff,
+        this.audioOutput.contextTimeOnPost,
+        this.audioOutput.dataInBuffer,
+        this.options.keepInBuffer);
+      this.synthOutputTimeDiff = newOutputTimeDiff;
+    } else {
+      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.999999 + 0.000001 * newOutputTimeDiff;
+    }
+
+    // console.log('!', this.audioOutput.dataInBuffer);
+    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
+      // console.log('.', this.audioOutput.dataInBuffer);
       let start = globalThis.performance.now();
       if (this.webGLSynth.samplesCalculated) {
         this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
@@ -197,8 +214,14 @@ class SynthController {
 
       this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
     }
+   
     this.currentLatencyTime = (((this.audioOutput.dataInBuffer) / this.sampleRate) * 1000);
-    this.latencyTimeAvg = this.latencyTimeAvg * 0.99 + 0.01 * this.currentLatencyTime;
+    this.latencyTimeAvg = this.latencyTimeAvg * 0.999 + 0.001 * this.currentLatencyTime;
+  }
+
+  get playSynthTime() {
+    let outputTime = this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
+    return outputTime  + this.synthOutputTimeDiff;
   }
   getSynthShaderCode(name) {
     // Default to system shader stuff
