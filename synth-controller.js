@@ -192,11 +192,12 @@ class SynthController {
       console.log('resync time',
         this.synthOutputTimeDiff - newOutputTimeDiff,
         this.audioOutput.contextTimeOnPost,
+        this.audioOutput.bufferEmptyCount,
         this.audioOutput.dataInBuffer,
         this.options.keepInBuffer);
       this.synthOutputTimeDiff = newOutputTimeDiff;
     } else {
-      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.999999 + 0.000001 * newOutputTimeDiff;
+      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.999 + 0.001 * newOutputTimeDiff;
     }
 
     // console.log('!', this.audioOutput.dataInBuffer);

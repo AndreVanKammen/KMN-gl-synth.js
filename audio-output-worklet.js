@@ -14,6 +14,7 @@ const defaultOptions = {
     this.options = { ...defaultOptions, ...options };
 
     this.isInitialized = false;
+    /** @type {AudioContext} */
     this.audioCtx = undefined;
     this.audioWorklet = undefined;
     this.initBuffers = [];
@@ -30,8 +31,12 @@ const defaultOptions = {
     this.dataInBuffer = evt.data.bufferLength;
     this.bufferEmptyCount = evt.data.bufferEmptyCount;
     this.contextTimeOnPost = evt.data.contextTimeOnPost;
-    if (this.onCalcBuffer) {
-      this.onCalcBuffer();
+    let postAge = this.audioCtx.currentTime - this.contextTimeOnPost;
+    // Filter old messages, they cause the buffer to overflow
+    if (postAge <= 0.04) {
+      if (this.onCalcBuffer) {
+        this.onCalcBuffer();
+      }
     }
   }
 
