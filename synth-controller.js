@@ -22,6 +22,8 @@ const defaultOptions = {
   }
 }
 
+const spoofBuffer = new Float32Array(4096);
+
 // Handles all interaction betweeen  midiNotes => webglsynth => audioOutput
 class SynthController {
   constructor (options) {
@@ -197,15 +199,21 @@ class SynthController {
         this.options.keepInBuffer);
       this.synthOutputTimeDiff = newOutputTimeDiff;
     } else {
-      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.999 + 0.001 * newOutputTimeDiff;
+      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.9999 + 0.0001 * newOutputTimeDiff;
     }
 
     // console.log('!', this.audioOutput.dataInBuffer);
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
       // console.log('.', this.audioOutput.dataInBuffer);
       let start = globalThis.performance.now();
+      // this.audioOutput.postBuffer(spoofBuffer)
       if (this.webGLSynth.samplesCalculated) {
-        this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+        if (!this.webGLSynth.checkSamplesReady()) {
+          setTimeout(this.handleAudioDataRequestBound,0);
+          return;
+        } else {
+          this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+        }
       } else {
         this.webGLSynth.calculateSamples();
         

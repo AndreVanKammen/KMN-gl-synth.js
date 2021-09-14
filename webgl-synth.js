@@ -1028,9 +1028,12 @@ class WebGLSynth {
 
   checkSamplesReady() {
     if (!this.webGLSync) {
-      return false;
+      return true;
     }
-    return this.gl.clientWaitSync(this.webGLSync, 0, 0) === this.gl.CONDITION_SATISFIED;
+    let state = this.gl.clientWaitSync(this.webGLSync, 0, 0)
+    // console.log(state);
+
+    return state === this.gl.CONDITION_SATISFIED;
   }
 
   getCalculatedSamples() {
@@ -1044,6 +1047,7 @@ class WebGLSynth {
     }
     
     gl.clientWaitSync(this.webGLSync, 0, 0);
+    this.webGLSync = null;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
     // Thanks for https://stackoverflow.com/questions/45571488/webgl-2-readpixels-on-framebuffers-with-float-textures
     gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
