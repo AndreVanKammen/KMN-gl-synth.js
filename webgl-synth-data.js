@@ -377,8 +377,8 @@ export class SynthNote extends SynthBaseEntry {
     this.newAftertouch = this.controlData.getControlAtTime(time, otherControls.aftertouch,1.0);
   }
 
-  changeControl (time, controlType, value) {
-    this.controlData.addControl(time, controlType, value)
+  changeControl (time, controlType, value, interpolate = false) {
+    this.controlData.addControl(time, controlType, value, interpolate);
   }
 }
 
