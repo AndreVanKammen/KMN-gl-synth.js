@@ -209,7 +209,7 @@ class SynthController {
       // this.audioOutput.postBuffer(spoofBuffer)
       if (this.webGLSynth.samplesCalculated) {
         if (!this.webGLSynth.checkSamplesReady()) {
-          setTimeout(this.handleAudioDataRequestBound,0);
+          setTimeout(this.handleAudioDataRequestBound,3);
           return;
         } else {
           this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
