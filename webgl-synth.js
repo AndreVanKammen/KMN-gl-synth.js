@@ -846,7 +846,9 @@ class WebGLSynth {
         a1[attrOfs + 1] = tli.current;
         a1[attrOfs + 2] = entry.recordStartIndex;
         a1[attrOfs + 3] = this.recordAnalyzeMultiplier;
-        entry.recordStartIndex += this.recordAnalyzeMultiplier;
+        if ((this.synthTime - entry.time) >= -0.00001) {
+          entry.recordStartIndex += this.recordAnalyzeMultiplier;
+        }
         // attrOfs += 4;
         // a1[attrOfs + 0] = tli.passNr;
         // a1[attrOfs + 1] = tli.current;

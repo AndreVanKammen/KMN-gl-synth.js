@@ -335,15 +335,15 @@ void main(void) {
 
   vec2 sampleVal = sampleNr % 2 == 0 ? fragVal.xy : fragVal.zw;
 
-  // sampleVal = vec2(sin(time*440.0*pi2));
+  // sampleVal = vec2(sin(time*44.0*pi2));
   // if (time>=releaseTime) {
   //   sampleVal = vec2(0.0);
   // }
   sampleVal *= 
     aftertouch *
-    volume *
-    clamp(time * 50.,0.0,1.0) * // 20ms attack
-    (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
+    volume;
+    // clamp(time * 50.,0.0,1.0) * // 20ms attack
+    // (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
 
   // sampleVal *= vec2(pan, 1.0 - pan);
   // sampleVal += sin(float(sampleNr)/100.0*pi2);

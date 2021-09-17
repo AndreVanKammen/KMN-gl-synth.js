@@ -191,12 +191,12 @@ class SynthController {
       this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
     
     if (Math.abs(this.synthOutputTimeDiff - newOutputTimeDiff) > 0.5) {
-      console.log('resync time',
-        this.synthOutputTimeDiff - newOutputTimeDiff,
-        this.audioOutput.contextTimeOnPost,
-        this.audioOutput.bufferEmptyCount,
-        this.audioOutput.dataInBuffer,
-        this.options.keepInBuffer);
+      // console.log('resync time',
+      //   this.synthOutputTimeDiff - newOutputTimeDiff,
+      //   this.audioOutput.contextTimeOnPost,
+      //   this.audioOutput.bufferEmptyCount,
+      //   this.audioOutput.dataInBuffer,
+      //   this.options.keepInBuffer);
       this.synthOutputTimeDiff = newOutputTimeDiff;
     } else {
       this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.9999 + 0.0001 * newOutputTimeDiff;
