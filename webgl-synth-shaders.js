@@ -3,8 +3,7 @@
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 // The shader that calculates the pixel values for the filled triangles
-const glsl = x => x[0]; // makes the glsl-literal VS Code extention work
-const defaultHeader = `precision highp float;
+const defaultHeader = /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
@@ -128,7 +127,7 @@ vec2 getInputSample(float deltaTime) {
 `;
 
 const SystemShaders = {
-vertex: glsl`precision highp float;
+vertex: /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
@@ -171,12 +170,12 @@ void main(void) {
 
   gl_Position = vec4(-1.0+2.0*float(gl_VertexID % 2), vertexPosition.y, 0.0, 1.0);
 }`,
-"zero": glsl`precision highp float;
+"zero": /*glsl*/`precision highp float;
 layout(location = 0) out vec4 fragColor;
 void main(void) {
   fragColor = vec4(0.0, 0.0, 0.0, 0.0);
 }`,
-"mixdown": `precision highp float;
+"mixdown": /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
@@ -196,7 +195,7 @@ void main(void) {
   fragColor = sampleValue;
 }
 `,
-effect: defaultHeader + glsl`
+effect: defaultHeader + /*glsl*/`
 
 {EffectFunction}
 
@@ -204,7 +203,7 @@ void main(void) {
   fragColor = vec4(vec2(effectMain()), 0.0, 1.0);
 }
 `,
-effect4: defaultHeader + glsl`
+effect4: defaultHeader + /*glsl*/`
 
 {EffectFunction}
 
@@ -212,7 +211,7 @@ void main(void) {
   fragColor = effectMain();
 }
 `,
-"waveform": defaultHeader + glsl`
+"waveform": defaultHeader + /*glsl*/`
 // Default attack decay time, can be overwritten in the user functions
 float attackTime = 0.005;
 float decayTime = 0.2;
@@ -268,7 +267,7 @@ void main(void) {
   fragColor = vec4(sampleToStereo(sampleValue), 0.0, 1.0);
 }`,
 
-playInput: glsl`// #synth-note-mode: exclusive // don't start the same not twice
+playInput: /*glsl*/`// #synth-note-mode: exclusive // don't start the same not twice
 // options could be: all/exclusive/poly/mono/glide
 
 precision highp float;
@@ -342,6 +341,9 @@ void main(void) {
   sampleVal *= 
     aftertouch *
     volume;
+  if ((time<0.0) || (time>releaseTime)) {
+    sampleVal *= 0.0;
+  }
     // clamp(time * 50.,0.0,1.0) * // 20ms attack
     // (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
 
@@ -353,7 +355,7 @@ void main(void) {
 }
 `,
 
-copyLineVertex: glsl`precision highp float;
+copyLineVertex: /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 in vec4 vertexPosition;
@@ -376,7 +378,7 @@ void main(void) {
   
   gl_Position = vec4(vertexPosition.x, 0.5, 1.0, 1.0);
 }`,
-copyLine: glsl`precision highp float;
+copyLine: /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
@@ -406,7 +408,7 @@ void main(void) {
   fragColor = sampleValue;
 }`,
 
-rmsAvgEngMaxVertex: glsl`precision highp float;
+rmsAvgEngMaxVertex: /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
@@ -444,7 +446,7 @@ void main(void) {
   gl_Position = vec4(outputX, outputY, 1.0, 1.0);
 }`,
 
-rmsAvgEngMax: glsl`precision highp float;
+rmsAvgEngMax: /*glsl*/`precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
