@@ -9,7 +9,7 @@ import defer from '../KMN-utils.js/defer.js';
 
 
 const defaultOptions = {
-  keepInBuffer: 2 * 1024,
+  keepInBuffer: 4 * 1024,
   // updateInterval: 1,
   maxNoteLength: 30,
   audioOutput: {
