@@ -304,17 +304,17 @@ in vec2 pixel_position;
 uniform sampler2D inputTexture;
 uniform int inputTextureHeight;
 
-const int streamBlocks = 4; // TODO get for streambuffer
+uniform int streamBlocks;
 
 const int channelCount = 2; // TODO get for track
 const int streamSampleRate = sampleRate; // TODO get for track
 
 const int samplesPerVec4 = 4 / channelCount;
-const int streamVec4Count = (streamBlocks * bufferWidth);
-const int streamSampleCount = streamVec4Count * samplesPerVec4;
 
 void main(void) {
-
+  int streamVec4Count = (streamBlocks * bufferWidth);
+  int streamSampleCount = streamVec4Count * samplesPerVec4;
+  
   // int trackOffset = int(note) * trackSize;
   // int sampleNr = int(floor(time * float(sampleRate))) % trackSize;
   // int fragNr = (trackOffset + sampleNr) / channelCount;

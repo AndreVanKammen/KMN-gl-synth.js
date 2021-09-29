@@ -11,7 +11,7 @@ export class StreamBuffer {
     this.playData = synth.playData;
 
     this.historySamples = 32; // TODO: CHANGING THIS TO 16 or 1024 INFLUENCES BEAT DETECTION IN HURRICANE
-    this.streamBlocks = 4;
+    this.streamBlocks = 8;
     this.streamCount = ~~(512 / this.streamBlocks);
     this.streamVec4Count = ~~(this.streamBlocks * synth.bufferWidth);
     this.streamFloatSize = ~~(this.streamVec4Count * 4);
@@ -101,7 +101,7 @@ export class StreamBuffer {
     // 10021 buffers id 232.687 seconds of music
     // 6.6 seconds for pinkfloyds great gig midi (doesn't use this code but a lot of notes with room effects)
     if (this.firstChange !== this.bufferData.length) {
-      this.textureInfo = this.synth.gl.createOrUpdateFloat32TextureBuffer(this.bufferData,this.textureInfo, this.firstChange, this.lastChange);
+      this.textureInfo = this.synth.gl.createOrUpdateFloat32TextureBuffer(this.bufferData, this.textureInfo, this.firstChange, this.lastChange);
     }
     this.firstChange = this.bufferData.length;
     this.lastChange = 0;

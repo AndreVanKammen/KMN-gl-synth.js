@@ -566,8 +566,15 @@ class WebGLSynth {
           // Get the difference as a fraction of the total time
           let timeShift = this.bufferTime * (1.0 - frequencyRatio);
           timeShift += (this.bufferTime - this.bufferTime * playDirection);
+          let bufferLengthInTime = this.bufferTime - timeShift
 
-          a1[attrOfs + 6] = a1[attrOfs + 2] + this.bufferTime - timeShift;
+          a1[attrOfs + 6] = a1[attrOfs + 2] + bufferLengthInTime;
+
+          // if (playDirection < 0.0) {
+          //   let correction = bufferLengthInTime / this.bufferWidth * 1.0;
+          //   a1[attrOfs + 6] -= correction;
+          //   a1[attrOfs + 2] += correction;
+          // }
 
           // And change the track startTime 
           entry.phaseTime += timeShift;
@@ -686,6 +693,7 @@ class WebGLSynth {
 
     if (streamBuffer && streamBuffer.textureInfo.texture) {
       streamBuffer.update();
+      shader.u.streamBlocks?.set(streamBuffer.streamBlocks);
       gl.activeTexture(gl.TEXTURE4);
       gl.bindTexture(gl.TEXTURE_2D, streamBuffer.textureInfo.texture);
       gl.uniform1i(shader.u.inputTexture, 4);
