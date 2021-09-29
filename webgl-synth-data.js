@@ -355,6 +355,9 @@ export class SynthNote extends SynthBaseEntry {
     this.recordStartIndex = index
   }
 
+  getPlayDirection(controlTime) {
+    return this.channelControl.getControlAtTime(controlTime, otherControls.playDirection, 1.0);
+  }
   
   release (time, velocity, releaseTime = extraAfterRelease) {
     if (velocity>=0) {

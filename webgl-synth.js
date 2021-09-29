@@ -522,7 +522,8 @@ class WebGLSynth {
       const controlTime = this.synthTime;// + this.bufferTime * 0.5;
       // TODO: There is only 1 channel here so we can calculatr this once
       let pitchRange = entry.channelControl.getControlAtTime(controlTime, otherControls.pitchRange, 2.0) || 2.0;
-      let pitch = entry.channelControl.getControlAtTime(controlTime , otherControls.pitch, 0.0) || 0.0;
+      let pitch = entry.channelControl.getControlAtTime(controlTime, otherControls.pitch, 0.0) || 0.0;
+      let playDirection = entry.getPlayDirection(controlTime);
 
       if (streamBuffer) {
         if (entry.streamNr < 0) {
@@ -551,6 +552,7 @@ class WebGLSynth {
           a1[attrOfs + 6] = this.synthTime - entry.time + ((oIX + 1) *this.bufferTime);
         } else {
           a1[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
+
           // Calculation for pitch by timeshift, if we change the frequency in 
           // the shader we would need phase corrections, by stretching time
           // we avoid this because the shader can just repeat it's stateless 
@@ -563,12 +565,11 @@ class WebGLSynth {
           // removed constant value / Math.pow(2.0, 12.0 / 12.0);
           // Get the difference as a fraction of the total time
           let timeShift = this.bufferTime * (1.0 - frequencyRatio);
-          // This line add to output
+          timeShift += (this.bufferTime - this.bufferTime * playDirection);
+
           a1[attrOfs + 6] = a1[attrOfs + 2] + this.bufferTime - timeShift;
 
-          // a1[attrOfs + 0] = a1[attrOfs + 2];
-          // a1[attrOfs + 4] = a1[attrOfs + 6];
-            // And change the track startTime 
+          // And change the track startTime 
           entry.phaseTime += timeShift;
         }
         a1[attrOfs + 7] = entry.releaseTime;
@@ -1027,6 +1028,8 @@ class WebGLSynth {
       this.webGLSync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     // }
     this.samplesCalculated = true;
+    this.synthTime += this.bufferTime;
+
     return currentEntries.length > 0;
   }
 
@@ -1163,7 +1166,6 @@ class WebGLSynth {
       }
     }
 
-    this.synthTime += this.bufferTime;
     this.processCount++;
 
     return bufferData;

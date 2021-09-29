@@ -15,7 +15,10 @@ const otherControls = {
   note: 136,
   velocity: 137,
   releaseVelocity: 138,
-  aftertouch: 139
+  aftertouch: 139,
+
+  // Made up by me
+  playDirection: 140
 }
 
 export { otherControls }
