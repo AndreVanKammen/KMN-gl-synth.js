@@ -95,7 +95,7 @@ class SynthController {
         // outOfNotes = true;
         break
       }
-      this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
+      // this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
       this.webGLSynth.processCount++;
     }
 
@@ -126,7 +126,7 @@ class SynthController {
       this.analyzeResolver = resolve;
 
       this.webGLSynth.calculateSamples();
-      this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
+      // this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
       defer(() => {
         this.getNextBuffer();
       });
