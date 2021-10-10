@@ -230,7 +230,7 @@ class SynthController {
 
   get playSynthTime() {
     let outputTime = this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
-    return outputTime  + this.synthOutputTimeDiff;
+    return outputTime + this.synthOutputTimeDiff - this.latencyTimeAvg / 1000.0;
   }
   getSynthShaderCode(name) {
     // Default to system shader stuff
