@@ -225,7 +225,7 @@ class SynthController {
     }
    
     this.currentLatencyTime = (((this.audioOutput.dataInBuffer) / this.sampleRate) * 1000);
-    this.latencyTimeAvg = this.latencyTimeAvg * 0.999 + 0.001 * this.currentLatencyTime;
+    this.latencyTimeAvg = this.latencyTimeAvg * 0.9999 + 0.0001 * this.currentLatencyTime;
   }
 
   get playSynthTime() {

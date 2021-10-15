@@ -285,7 +285,7 @@ in float aftertouch;
 
 #define modulation getControl(1)
 #define pan getControl(10)
-#define pitch getControl(257)
+#define pitch getControl(129)
 #define volume getControl(7)
 
 out vec4 fragColor;

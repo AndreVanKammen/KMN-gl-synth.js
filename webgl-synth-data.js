@@ -123,10 +123,19 @@ export class ControlHandler {
     for (let ctrl of Object.keys(this.controlChanges)) {
       let ctrlNr = ~~ctrl;
       // let value = this.controls[ctrl];
-      this.controlBuffer[ctrlNr * 4 + 0] = this.controlBuffer[ctrlNr * 4 + 2]; // from previous
-      this.controlBuffer[ctrlNr * 4 + 1] = synthTime;
-      this.controlBuffer[ctrlNr * 4 + 2] = this.getControlAtTime(synthTime + bufferTime, ctrlNr); // from the future
-      this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
+      if (ctrlNr === otherControls.pitch) {
+        // Do not interpolate pitch it's the same for the whole block
+        let value = this.getControlAtTime(synthTime, otherControls.pitch);
+        this.controlBuffer[ctrlNr * 4 + 0] = value;
+        this.controlBuffer[ctrlNr * 4 + 1] = synthTime;
+        this.controlBuffer[ctrlNr * 4 + 2] = value;
+        this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
+      } else {
+        this.controlBuffer[ctrlNr * 4 + 0] = this.controlBuffer[ctrlNr * 4 + 2]; // from previous
+        this.controlBuffer[ctrlNr * 4 + 1] = synthTime;
+        this.controlBuffer[ctrlNr * 4 + 2] = this.getControlAtTime(synthTime + bufferTime, ctrlNr); // from the future
+        this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
+      }
     }
     
     // Test to see if any value comes trough
@@ -273,8 +282,9 @@ export class SynthMixer extends SynthBaseEntry {
     this.streamBuffer = new StreamBuffer(synth);
     // TODO: Every track can have it's own sampleRate or does decode fix that for us?
     // streamBuffer.sampleRate = audioData.sampleRate;
-    // TODO: Consider other then stereo?
+    // TODO: Consider other than stereo?
     this.divider = 0;
+    this.audioTracks = audioTracks;
     this.streamBuffer.onGetData = audioTracks.getData.bind(audioTracks);
   }
 
@@ -307,7 +317,7 @@ export class SynthNote extends SynthBaseEntry {
    * @param {string} timeZone 
    * @param {SynthMixer} mixer 
    * @param {Partial<NoteData>} data 
-   * @param {*} channelControl 
+   * @param {ControlHandler} channelControl 
    */
   constructor (owner, time, timeZone, mixer, data, channelControl) {
     super(mixer);
@@ -397,6 +407,7 @@ class SynthPlayData {
     this.output = new SynthMixer(null);
     // this.output.addEffect('
 
+    /** @type {Record<number, ControlHandler>} */
     this.channelControls = {};
 
     this.executePlanner = new SynthExecutePlanner(this);
@@ -479,6 +490,12 @@ class SynthPlayData {
     this.timeOffsets[timeZone] = synthTime - time + (thight ? 0 : this.synth.bufferTime * 2);
   }
 
+  /**
+   * 
+   * @param {string} timeZone 
+   * @param {number} channel 
+   * @returns {ControlHandler}
+   */
   getChannelControl(timeZone, channel) {
     let key = timeZone + '_' + channel;
     return this.channelControls[key] || 
