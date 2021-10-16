@@ -14,27 +14,8 @@ const maxControlCount = 1024;
 // TODO in the case of notes, silence could also end the note, but that is only known at play time
 // TODO this extra time can be calculated from decayTime + max(effectsTime)
 const extraAfterRelease = 4.5; // Give it an extra time to fade out in seconds after release
-
-// const streamingTrackData = {
-//   time: 0,
-//   note: 0,
-//   releaseTime: 3600*24,
-//   velocity: 1.0,
-//   program: 2048
-// }
-
-
-export class ControlHandler {
-  constructor (owner, timeZone) {
-    this.owner = owner;
-    // this.controls = [];
-    this.controlChanges = {};
-    this.timeZone = timeZone;
-
-    this.controlLastUpdateTime = 0;
-    this.controlBuffer = null;
-    this.texInfo = { texture:undefined, size:0 };
-
+export class ControlBase {
+  constructor() {
     // TODO handle defaults trough ControlNames table in datamodel
     // Defaults for volume, expression, pan and balance
     this.controlDefaults = {};
@@ -42,50 +23,16 @@ export class ControlHandler {
     this.controlDefaults[11] = 1.0;
     this.controlDefaults[8] = 0.5;
     this.controlDefaults[10] = 0.5;
-  }
 
-
-  addControl(time, controlType, value, interpolate = false) {
-    // console.log('control ', controlType, value);
-    let controlInfo = this.controlChanges[controlType];
-    if (!controlInfo) {
-      controlInfo = this.controlChanges[controlType] = {
-        controlData: [], 
-        interpolate};
-    }
-    controlInfo.controlData.push({time, value});
+    this.texInfo = { texture:undefined, size:0 };
   }
 
   getControlAtTime(synthTime, controlType, defaultValue) {
-    let controlInfo = this.controlChanges[controlType]
-    if (defaultValue === undefined) {
-      defaultValue = this.controlDefaults[controlType] || 0;
-    } else {
-      this.controlDefaults[controlType] = defaultValue;
-    }
+    return this.controlDefaults[controlType] || 0.0;
+  }
 
-    if (!controlInfo) {
-      return this.controlDefaults[controlType];
-    }
-    let changes = controlInfo.controlData;
-
-    for (let ix = changes.length-1; ix >= 0; ix--) {
-      let change = changes[ix];
-      // TODO optimize convertTime can be calle once and incremented?
-      let time = this.owner.convertTime(synthTime, change.time, this.timeZone);
-      if (time <= synthTime) {
-        if (controlInfo.interpolate && (ix<changes.length-1)) {
-          let nextChange = changes[ix + 1];
-          let nextVal = nextChange.value;
-          let nextTime = this.owner.convertTime(synthTime, nextChange.time, this.timeZone);
-          let deltaTime = (synthTime-time) / (nextTime - time);
-          return change.value * (1.0-deltaTime) + deltaTime * nextVal;
-        } else {
-          return change.value;
-        }
-      }
-    }
-    return defaultValue;
+  getControlList() {
+    return [];
   }
 
   updateControlBuffer(synthTime, bufferTime) {
@@ -120,7 +67,7 @@ export class ControlHandler {
         this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
       }
     } 
-    for (let ctrl of Object.keys(this.controlChanges)) {
+    for (let ctrl of this.getControlList() ) {
       let ctrlNr = ~~ctrl;
       // let value = this.controls[ctrl];
       if (ctrlNr === otherControls.pitch) {
@@ -144,6 +91,67 @@ export class ControlHandler {
     // }
     return true;
   }
+}
+export class ControlHandler extends ControlBase {
+  constructor(owner, timeZone) {
+    super();
+    this.owner = owner;
+    // this.controls = [];
+    this.controlChanges = {};
+    this.timeZone = timeZone;
+
+    this.controlLastUpdateTime = 0;
+    this.controlBuffer = null;
+  }
+
+
+  addControl(time, controlType, value, interpolate = false) {
+    // console.log('control ', controlType, value);
+    let controlInfo = this.controlChanges[controlType];
+    if (!controlInfo) {
+      controlInfo = this.controlChanges[controlType] = {
+        controlData: [], 
+        interpolate};
+    }
+    controlInfo.controlData.push({time, value});
+  }
+
+  getControlList() {
+    return Object.keys(this.controlChanges).map(x => ~~x);
+  }
+
+  getControlAtTime(synthTime, controlType, defaultValue) {
+    let controlInfo = this.controlChanges[controlType]
+    if (defaultValue === undefined) {
+      defaultValue = this.controlDefaults[controlType] || 0;
+    } else {
+      this.controlDefaults[controlType] = defaultValue;
+    }
+
+    if (!controlInfo) {
+      return this.controlDefaults[controlType];
+    }
+    let changes = controlInfo.controlData;
+
+    for (let ix = changes.length-1; ix >= 0; ix--) {
+      let change = changes[ix];
+      // TODO optimize convertTime can be calle once and incremented?
+      let time = this.owner.convertTime(synthTime, change.time, this.timeZone);
+      if (time <= synthTime) {
+        if (controlInfo.interpolate && (ix<changes.length-1)) {
+          let nextChange = changes[ix + 1];
+          let nextVal = nextChange.value;
+          let nextTime = this.owner.convertTime(synthTime, nextChange.time, this.timeZone);
+          let deltaTime = (synthTime-time) / (nextTime - time);
+          return change.value * (1.0-deltaTime) + deltaTime * nextVal;
+        } else {
+          return change.value;
+        }
+      }
+    }
+    return defaultValue;
+  }
+
   
 }
 // Base for all audio handling classes here
@@ -317,7 +325,7 @@ export class SynthNote extends SynthBaseEntry {
    * @param {string} timeZone 
    * @param {SynthMixer} mixer 
    * @param {Partial<NoteData>} data 
-   * @param {ControlHandler} channelControl 
+   * @param {ControlBase} channelControl 
    */
   constructor (owner, time, timeZone, mixer, data, channelControl) {
     super(mixer);
@@ -357,7 +365,7 @@ export class SynthNote extends SynthBaseEntry {
     this.runShaders = [];
 
     // this.isReleased = false;
-    this.controlData = new ControlHandler(owner, timeZone);
+    this.noteControl = new ControlHandler(owner, timeZone);
     this.recordStartIndex = -1;
   }
   
@@ -371,7 +379,7 @@ export class SynthNote extends SynthBaseEntry {
   
   release (time, velocity, releaseTime = extraAfterRelease) {
     if (velocity>=0) {
-      this.controlData.addControl(time, otherControls.releaseVelocity, velocity);
+      this.noteControl.addControl(time, otherControls.releaseVelocity, velocity);
     }
 
     this.endTime = time + releaseTime;
@@ -386,12 +394,12 @@ export class SynthNote extends SynthBaseEntry {
 
     this.lastReleaseVelocity = this.newReleaseVelocity;
     this.lastAftertouch = this.newAftertouch;
-    this.newReleaseVelocity = this.controlData.getControlAtTime(time, otherControls.releaseVelocity,1.0);
-    this.newAftertouch = this.controlData.getControlAtTime(time, otherControls.aftertouch,1.0);
+    this.newReleaseVelocity = this.noteControl.getControlAtTime(time, otherControls.releaseVelocity,1.0);
+    this.newAftertouch = this.noteControl.getControlAtTime(time, otherControls.aftertouch,1.0);
   }
 
   changeControl (time, controlType, value, interpolate = false) {
-    this.controlData.addControl(time, controlType, value, interpolate);
+    this.noteControl.addControl(time, controlType, value, interpolate);
   }
 }
 
@@ -511,11 +519,11 @@ class SynthPlayData {
    * @param {Partial<NoteData>} noteData Data for the note
    * @returns {SynthNote}
    */
-  addNote(time, timeZone, channel, mixer, noteData) {
+  addNote(time, timeZone, channel, mixer, noteData, channelControl = this.getChannelControl(timeZone, channel)) {
 
     // TODO: Remove notedata if possible its vague
     noteData.channel = channel;
-    let note = new SynthNote(this, time, timeZone, mixer, noteData, this.getChannelControl(timeZone, channel));
+    let note = new SynthNote(this, time, timeZone, mixer, noteData, channelControl);
 
     // console.log('note ', JSON.stringify(noteData,0,2));
     let key = timeZone + '_' + channel;
@@ -618,8 +626,5 @@ class SynthPlayData {
     return timedEntries;
   }
 }
-
-
-// SynthPlayData.streamProgramNr = streamingTrackData.program;
 
 export default SynthPlayData;

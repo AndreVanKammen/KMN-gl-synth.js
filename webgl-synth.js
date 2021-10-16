@@ -4,7 +4,7 @@
 
 import getWebGLContext from '../KMN-utils.js/webglutils.js';
 import SystemShaders from './webgl-synth-shaders.js';
-import SynthPlayData, { ControlHandler, SynthBaseEntry, SynthMixer, SynthNote } from './webgl-synth-data.js';
+import SynthPlayData, { ControlHandler, ControlBase, SynthBaseEntry, SynthMixer, SynthNote } from './webgl-synth-data.js';
 import { otherControls } from './otherControls.js';
 import { WebGLMemoryManager } from './webgl-memory-manager.js';
 
@@ -477,7 +477,7 @@ class WebGLSynth {
   }
 // #endregion
 
-  /** @param {ControlHandler} channelControls */
+  /** @param {ControlBase} channelControls */
   loadChanelControls(channelControls) {
     if (channelControls.updateControlBuffer(this.synthTime, this.bufferTime)) {
 
