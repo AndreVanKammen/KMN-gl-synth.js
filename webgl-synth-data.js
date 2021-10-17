@@ -517,6 +517,7 @@ class SynthPlayData {
    * @param {number} channel Midi channel to play in (usaed for controls)
    * @param {SynthMixer} mixer The mixer to use for playing
    * @param {Partial<NoteData>} noteData Data for the note
+   * @param {ControlBase} channelControl Alternative source for controls
    * @returns {SynthNote}
    */
   addNote(time, timeZone, channel, mixer, noteData, channelControl = this.getChannelControl(timeZone, channel)) {
