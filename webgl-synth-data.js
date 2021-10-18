@@ -374,6 +374,7 @@ export class SynthNote extends SynthBaseEntry {
   }
 
   getPlayDirection(controlTime) {
+    // TODO: also add pitch here
     return this.channelControl.getControlAtTime(controlTime, otherControls.playDirection, 1.0);
   }
   
@@ -456,9 +457,9 @@ class SynthPlayData {
     return inputTime + this.timeOffsets[timeZone];
   }
 
-  getTime(timeZone) {
+  getTime(timeZone, synthTime = this.synth.synthTime) {
     if (this.timeOffsets.hasOwnProperty(timeZone)) {
-      return this.synth.synthTime - this.timeOffsets[timeZone] + this.synth.bufferTime * 2.0;
+      return synthTime - this.timeOffsets[timeZone] + this.synth.bufferTime * 2.0;
     } else {
       console.error('No time available for calculating time offset!');
     }
