@@ -1,9 +1,6 @@
-// To bad i have to go through converting a string to a blob to a dataurl just to be able to keep the code together
-// this is realy the ugly part of javascript
-// Also bad that I have to write this piece of code to just stream sample buffers, overengineered webaudio api!
-export const JustStreamMyBuffers = URL.createObjectURL(new Blob([`
-// TODO: use SharedArrayBuffer
-class JustStreamMyBuffers extends AudioWorkletProcessor {
+// This is a just a spoof so it can load, we transfer the class to a string
+class AudioWorkletProcessor { port };
+class JustStream extends AudioWorkletProcessor {
   constructor() {
     super();
 
@@ -77,5 +74,10 @@ class JustStreamMyBuffers extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor("audio-output", JustStreamMyBuffers);
-`], { type:'application/javascript' }));
+
+// To bad i have to go through converting a class to a string to a blob to a dataurl just to be able to keep the code together
+// this is realy the ugly part of javascript, this also means i can't do imports here they wouldn't be packaged
+// Also bad that I have to write this piece of code to just stream sample buffers, overengineered webaudio api!
+export const JustStreamMyBuffers = URL.createObjectURL(new Blob([
+  JustStream.toString() + '\nregisterProcessor("audio-output", JustStream);'
+], { type: 'application/javascript' }));

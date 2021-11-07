@@ -253,7 +253,7 @@ class EffectShaderInfo extends SynthShaderInfo {
   }
   getHistoryTime() {
     // TODO
-    return 1.0;
+    return 8.0;
     // return 0.16;
   }
 }

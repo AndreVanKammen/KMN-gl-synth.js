@@ -492,6 +492,16 @@ void main(void) {
   vec2 rmsValue = sampleValue * avgValue;
   outColor0 = vec4(rmsValue.x, avgValue.x, deltaValue.x, abs(sampleValue.x));
   outColor1 = vec4(rmsValue.y, avgValue.y, deltaValue.y, abs(sampleValue.y));
-}`
+}`,
+"silence": /*glsl*/`// #include formula
+0.0`,
+"sine": /*glsl*/`// #include formula
+sin(phase)`,
+"block": /*glsl*/`// #include formula
+block(phase)`,
+"saw": /*glsl*/`// #include formula
+saw(phase)`,
+"triangle": /*glsl*/`// #include formula
+triangle(phase)`,
 }
 export default SystemShaders
