@@ -74,10 +74,13 @@ class JustStream extends AudioWorkletProcessor {
   }
 }
 
+// HACK: Minification destroys the names of the classes, so we replace the part up to the "constructor"
+let codeStr = JustStream.toString();
+let ix = codeStr.indexOf('constructor(');
+codeStr = 'class JustStream extends AudioWorkletProcessor {' + codeStr.substr(ix)
+  + '\nregisterProcessor("audio-output", JustStream);';
 
-// To bad i have to go through converting a class to a string to a blob to a dataurl just to be able to keep the code together
-// this is realy the ugly part of javascript, this also means i can't do imports here they wouldn't be packaged
-// Also bad that I have to write this piece of code to just stream sample buffers, overengineered webaudio api!
-export const JustStreamMyBuffers = URL.createObjectURL(new Blob([
-  JustStream.toString() + '\nregisterProcessor("audio-output", JustStream);'
-], { type: 'application/javascript' }));
+// To bad we have to go through converting a class to a string to a blob to a dataurl just to be able to keep the code together
+// this is realy the ugly part of javascript, this also means we can't do imports here they wouldn't be packaged
+// Also bad that we have to write this piece of code to just stream sample buffers, overengineered webaudio api!
+export const JustStreamMyBuffers = URL.createObjectURL(new Blob([codeStr], { type: 'application/javascript' }));
