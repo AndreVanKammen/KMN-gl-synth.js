@@ -1,4 +1,4 @@
-import { JustStreamMyBuffers } from "./audio-worklet.js";
+import { JustStreamMyBuffers } from "./audio-worklet-shared.js";
 
 let AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
 
@@ -73,7 +73,7 @@ const defaultOptions = {
       this.audioCtx.audioWorklet.addModule(JustStreamMyBuffers).then(() => {
         this.audioWorklet = new AudioWorkletNode(
           this.audioCtx,
-          "audio-output",
+          "audio-output-shared",
           { outputChannelCount: [this.channelCount] }
         );
 
