@@ -78,7 +78,7 @@ class JustStream extends AudioWorkletProcessor {
 let codeStr = JustStream.toString();
 let ix = codeStr.indexOf('constructor(');
 codeStr = 'class JustStream extends AudioWorkletProcessor {' + codeStr.substr(ix)
-  + '\nregisterProcessor("audio-output-shared", JustStream);';
+  + '\nregisterProcessor("audio-output", JustStream);';
 
 // To bad we have to go through converting a class to a string to a blob to a dataurl just to be able to keep the code together
 // this is realy the ugly part of javascript, this also means we can't do imports here they wouldn't be packaged

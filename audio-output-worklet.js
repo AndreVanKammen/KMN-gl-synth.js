@@ -27,6 +27,10 @@ const defaultOptions = {
     this.audioCtx.close()
   }
 
+  getContextTime() {
+    return this.audioCtx.getOutputTimestamp().contextTime;
+  }
+  
   onWorkerMessage(evt) {
     this.dataInBuffer = evt.data.bufferLength;
     this.bufferEmptyCount = evt.data.bufferEmptyCount;
@@ -59,7 +63,7 @@ const defaultOptions = {
   // Since we can only start audiocontext from events
   // we need to start it from an event thats why i have the ensure started call
   // in every event
-  ensureStarted() {
+  ensureStarted(blockCount, blockSize) {
     if (!this.isInitialized) {
       this.isInitialized = true;
       if (this.options.sampleRate) {

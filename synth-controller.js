@@ -3,13 +3,14 @@
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 import WebGLSynth from './webgl-synth.js';
-import AudioOutput from './audio-output-worklet.js';
+import AudioOutput, { AudioOutputSD } from './audio-output-worklet-shared.js';
+// import AudioOutput from './audio-output-worklet.js';
 import SystemShaders from './webgl-synth-shaders.js';
 import defer from '../KMN-utils.js/defer.js';
 
 
 const defaultOptions = {
-  keepInBuffer: 4 * 1024,
+  keepInBuffer: 3 * 1024,
   // updateInterval: 1,
   maxNoteLength: 30,
   audioOutput: {
@@ -185,10 +186,49 @@ class SynthController {
   //   };
   // }
 
+  handleWorkerData() {
+    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
+      this.webGLSynth.calculateSamples();
+      this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+    }
+  }
+
   handleAudioDataRequest () {
-    let newOutputTimeDiff = 
-      (this.webGLSynth.synthTime - (this.audioOutput.dataInBuffer) / this.sampleRate) -
-      this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
+    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
+      // console.log('.', this.audioOutput.dataInBuffer);
+      let start = globalThis.performance.now();
+      // this.audioOutput.postBuffer(spoofBuffer)
+      if (this.webGLSynth.samplesCalculated) {
+        if (!this.webGLSynth.checkSamplesReady()) {
+          let maxTimeOut = 0;//Math.max(0, (this.audioOutput.dataInBuffer / this.channelCount / this.sampleRate) * 1000 - 1);
+          // TODO This won't work in workers but the wait for fence is also broken in workers :(
+          setTimeout(this.handleAudioDataRequestBound, Math.min(3, maxTimeOut));
+          return;
+        } else {
+          // console.log('!', this.audioOutput.dataInBuffer);
+          // // @ts-ignore: Check if shared data available
+          if (this.audioOutput.sd) {
+
+            //   // @ts-ignore: I checked
+            this.webGLSynth.getCalculatedSamples(this.audioOutput.sd);
+          } else {
+            this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+          }
+        }
+      } else {
+        this.webGLSynth.calculateSamples();
+        
+        // this.startTime += this.webGLSynth.bufferWidth / this.sampleRate;
+      }
+      let stop = globalThis.performance.now();
+
+      this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
+      // console.log('this.calcTimeAvg', this.calcTimeAvg.toFixed(2));
+    }
+   
+    let newOutputTimeDiff =
+      (this.webGLSynth.synthTime - (this.audioOutput.dataInBuffer / this.channelCount) / this.sampleRate) -
+      this.audioOutput.getContextTime();// audioCtx.getOutputTimestamp().contextTime;
     
     if (Math.abs(this.synthOutputTimeDiff - newOutputTimeDiff) > 0.5) {
       // console.log('resync time',
@@ -202,34 +242,12 @@ class SynthController {
       this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.9999 + 0.0001 * newOutputTimeDiff;
     }
 
-    // console.log('!', this.audioOutput.dataInBuffer);
-    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
-      // console.log('.', this.audioOutput.dataInBuffer);
-      let start = globalThis.performance.now();
-      // this.audioOutput.postBuffer(spoofBuffer)
-      if (this.webGLSynth.samplesCalculated) {
-        if (!this.webGLSynth.checkSamplesReady()) {
-          setTimeout(this.handleAudioDataRequestBound,3);
-          return;
-        } else {
-          this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
-        }
-      } else {
-        this.webGLSynth.calculateSamples();
-        
-        // this.startTime += this.webGLSynth.bufferWidth / this.sampleRate;
-      }
-      let stop = globalThis.performance.now();
-
-      this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
-    }
-   
-    this.currentLatencyTime = (((this.audioOutput.dataInBuffer) / this.sampleRate) * 1000);
-    this.latencyTimeAvg = this.latencyTimeAvg * 0.9999 + 0.0001 * this.currentLatencyTime;
+    this.currentLatencyTime = (((this.audioOutput.dataInBuffer / this.channelCount) / this.sampleRate) * 1000);
+    this.latencyTimeAvg = this.latencyTimeAvg * 0.99 + 0.01 * this.currentLatencyTime;
   }
 
   get playSynthTime() {
-    let outputTime = this.audioOutput.audioCtx.getOutputTimestamp().contextTime;
+    let outputTime = this.audioOutput.getContextTime();
     return outputTime + this.synthOutputTimeDiff - this.latencyTimeAvg / 1000.0;
   }
   getSynthShaderCode(name) {
@@ -246,9 +264,17 @@ class SynthController {
     if (!this.isInitialized) {
       this.isInitialized = true;
 
-      this.audioOutput = new AudioOutput(this.options.audioOutput);
+      if (this.options.sharedArray) {
+        this.audioOutput = new AudioOutputSD({
+          sharedArray: this.options.sharedArray,
+          ...this.options.audioOutput
+        });
+      } else {
+        this.audioOutput = new AudioOutput(this.options.audioOutput);
+      }
       this.audioOutput.onCalcBuffer = this.handleAudioDataRequestBound;
-      this.audioOutput.ensureStarted();
+      let blockSize = this.options.webgl.bufferWidth * this.audioOutput.options.channelCount;
+      this.audioOutput.ensureStarted(this.options.keepInBuffer / blockSize + 2, blockSize);
 
       // Sync audio parameters between components
       this.sampleRate   = this.options.webgl.sampleRate   = this.audioOutput.sampleRate;

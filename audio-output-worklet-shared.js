@@ -1,4 +1,4 @@
-import { JustStreamMyBuffers } from "./audio-worklet-shared.js";
+import { AudioOutputSharedData, JustStreamMyBuffers } from "./audio-worklet-shared.js";
 
 let AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
 
@@ -9,57 +9,84 @@ const defaultOptions = {
     latencyHint: 'interactive'  // can also be: 'balanced' 'interactive' 'playback'
   }
 };
- class AudioOutput {
+
+export class AudioOutputSD {
   constructor(options) {
     this.options = { ...defaultOptions, ...options };
 
     this.isInitialized = false;
+    this.sd = new AudioOutputSharedData();
+    this.onCalcBuffer = undefined;
+    this.handleDataInBufferChangeBound = this.handleDataInBufferChange.bind(this);
+  }
+
+  get dataInBuffer() {
+    return this.sd.dataInBuffer;
+  }
+
+  getContextTime() {
+    return this.sd.contextTime;
+  }
+
+  ensureStarted(blockCount, blockSize) {
+    if (!this.isInitialized) {
+      this.isInitialized = true;
+      
+      this.sampleRate = this.options.sampleRate || 44100;
+      this.channelCount = this.options.channelCount;
+
+      this.sd.initializeFromArray(this.options.sharedArray);
+
+      // if (this.onCalcBuffer) {
+      //   this.sd.waitOnBufferPosChange().then(this.handleDataInBufferChangeBound);
+      // }
+    }
+  }
+
+  handleDataInBufferChange() {
+    this.onCalcBuffer();
+    this.sd.waitOnBufferPosChange().then(this.handleDataInBufferChangeBound);
+  }
+
+  postBuffer(sampleData) {
+    // this.ensureStarted(sampleData.length);
+
+    let ofs = this.sd.getWriteBlockOffset();
+    let fa = this.sd.floatArray;
+    for (let ix = 0; ix < sampleData.length; ix++) {
+      fa[ofs++] = sampleData[ix];
+    }
+    this.sd.nextWriteBlockNr++;
+  }
+
+  dispose () {
+    this.isInitialized = false;
+  }
+}
+
+class AudioOutput extends AudioOutputSD {
+  constructor(options) {
+    super(options);
+
     /** @type {AudioContext} */
     this.audioCtx = undefined;
     this.audioWorklet = undefined;
-    this.initBuffers = [];
-    this.dataInBuffer = 0;
-    this.bufferEmptyCount = 0;
     this.onCalcBuffer = undefined;
   }
 
   dispose() {
-    this.audioCtx.close()
+    this.audioCtx.close();
+    super.dispose();
   }
 
-  onWorkerMessage(evt) {
-    this.dataInBuffer = evt.data.bufferLength;
-    this.bufferEmptyCount = evt.data.bufferEmptyCount;
-    this.contextTimeOnPost = evt.data.contextTimeOnPost;
-    let postAge = this.audioCtx.currentTime - this.contextTimeOnPost;
-    // Filter old messages, they cause the buffer to overflow
-    if (postAge <= 0.04) {
-      if (this.onCalcBuffer) {
-        this.onCalcBuffer();
-      }
-    }
-  }
-
-  postBuffer(sampleData) {
-    this.ensureStarted();
-
-    // Worklet needs to start 1st so we will miss the 1st buffer and 
-    // put it in a buffer to build a head start
-    if (this.audioWorklet) {
-      while (this.initBuffers.length >0) {
-        this.audioWorklet.port.postMessage(this.initBuffers.shift());
-      }
-      this.audioWorklet.port.postMessage(sampleData);
-    } else {
-      this.initBuffers.push(sampleData);
-    }
-    this.dataInBuffer += sampleData.length;
+  getContextTime() {
+    return this.audioCtx.getOutputTimestamp().contextTime;
   }
 
   // Since we can only start audiocontext from events
   // we need to start it from an event thats why i have the ensure started call
   // in every event
-  ensureStarted() {
+  ensureStarted(blockCount, blockSize) {
     if (!this.isInitialized) {
       this.isInitialized = true;
       if (this.options.sampleRate) {
@@ -70,6 +97,8 @@ const defaultOptions = {
       this.sampleRate = this.audioCtx.sampleRate;
       this.channelCount = this.options.channelCount;
 
+      this.sd.initializeArray(blockCount, blockSize);
+
       this.audioCtx.audioWorklet.addModule(JustStreamMyBuffers).then(() => {
         this.audioWorklet = new AudioWorkletNode(
           this.audioCtx,
@@ -78,7 +107,11 @@ const defaultOptions = {
         );
 
         this.audioWorklet.connect(this.audioCtx.destination);
-        this.audioWorklet.port.onmessage = this.onWorkerMessage.bind(this);
+        this.audioWorklet.port.postMessage(this.sd.sharedArray);
+        
+        if (this.onCalcBuffer) {
+          this.sd.waitOnBufferPosChange().then(this.handleDataInBufferChangeBound);
+        }
       });
     }
   }
