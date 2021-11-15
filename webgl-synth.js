@@ -1137,8 +1137,8 @@ class WebGLSynth {
     let sourceIx = 0;
     let destIx = 0;
     for (let ix = 0; ix < this.floatWidthGPU/(force4Components ? 4.0 : 2.0); ix++) {
-      bufferData[destIx++] += this.readSampleBuffer[sourceIx++];
-      bufferData[destIx++] += this.readSampleBuffer[sourceIx++];
+      bufferData[destIx++] = this.readSampleBuffer[sourceIx++];
+      bufferData[destIx++] = this.readSampleBuffer[sourceIx++];
       // FIX FOR MAC,LINUX & ANDROID, readpixels only works with 4 values and i only need 2 for stereo :(
       sourceIx += ~~force4Components
       sourceIx += ~~force4Components

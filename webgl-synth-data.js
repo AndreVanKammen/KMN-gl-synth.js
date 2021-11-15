@@ -439,6 +439,7 @@ class SynthPlayData {
 
     this.startIx = 0;
     this.timeOffsets = {};
+    this.timeOffsets['none'] = 0;
 
     /** @type {SynthNote[]} */
     this.entries = [];

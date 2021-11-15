@@ -171,7 +171,7 @@ class JustStreamShared extends AudioWorkletProcessor {
       for (let i = 0; i < output[0].length; i++) {
         for (let channelIx = 0; channelIx < output.length; channelIx++) {
           let sample = fa[ofs + this.bufferPos++];
-          if (Math.abs(sample) > 0.01) {
+          if (Math.abs(sample) > 0.0001) {
             hasSound = true;
           }
           output[channelIx][i] = sample;
@@ -184,6 +184,13 @@ class JustStreamShared extends AudioWorkletProcessor {
           }
           ofs = this.sd.getReadBlockOffset();
         }
+      }
+      if (hasSound) {
+        if (this.hasSoundCount++ === 0) {
+          console.log('sound: ', globalThis.currentTime);
+        }
+      } else {
+       this.hasSoundCount = 0;
       }
     } else {
       this.sd.bufferEmptyCount++;
@@ -200,13 +207,6 @@ class JustStreamShared extends AudioWorkletProcessor {
     this.sd.contextTime = globalThis.currentTime;
     this.sd.processCount++;
 
-    if (hasSound) {
-      if (this.hasSoundCount++ === 0) {
-        console.log('sound: ', globalThis.currentTime);
-      }
-    } else {
-     this.hasSoundCount = 0;
-    }
 
     return true;
   }

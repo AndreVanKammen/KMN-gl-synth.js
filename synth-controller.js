@@ -208,8 +208,6 @@ class SynthController {
           // console.log('!', this.audioOutput.dataInBuffer);
           // // @ts-ignore: Check if shared data available
           if (this.audioOutput.sd) {
-
-            //   // @ts-ignore: I checked
             this.webGLSynth.getCalculatedSamples(this.audioOutput.sd);
           } else {
             this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
