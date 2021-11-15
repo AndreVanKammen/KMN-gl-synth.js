@@ -24,7 +24,7 @@ const mixdownShader = '#mixdown';
 const defaultOptions = {
   sampleRate: 44100,
   bufferWidth: 1024,
-  bufferHeight: 512,//1024,
+  bufferHeight: 1024,
   bufferCount: 64, // Is for source and target so 2 times as big
   channelCount: 2 // Actualy only 2 will work for now because all shaders are stereo
 };
@@ -1048,7 +1048,7 @@ class WebGLSynth {
     this.gl.finish();
     let state = this.gl.clientWaitSync(this.webGLSync, 0, 0); // THis errprs with more then max STUPID ERROR this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
     // let state = this.gl.clientWaitSync(this.webGLSync, 0, this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
-    console.log('state: ', state);
+    // console.log('state: ', state);
     // 37146 ALREADY ALREADY_SIGNALED
     // 37147 TIMEOUT_EXPIRED
     // 37148 CONDITION_SATISFIED

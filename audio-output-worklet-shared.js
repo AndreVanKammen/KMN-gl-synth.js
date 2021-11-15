@@ -53,7 +53,7 @@ export class AudioOutputSD {
 
     let ofs = this.sd.getWriteBlockOffset();
     let fa = this.sd.floatArray;
-    for (let ix = 0; ix < sampleData.length; ix++) {
+    for (let ix = 0; ix < this.sd.blockSize; ix++) {
       fa[ofs++] = sampleData[ix];
     }
     this.sd.nextWriteBlockNr++;

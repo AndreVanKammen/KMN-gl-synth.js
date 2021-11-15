@@ -86,7 +86,7 @@ export class AudioOutputSharedData {
   set nextWriteBlockNr(x) {
     if (this.intArray) {
       this.intArray[3] = x;
-      Atomics.notify(this.intArray, 3, 1);
+      Atomics.notify(this.intArray, 3);
     }
   }
   get blockSize() { return this.intArray ? this.intArray[0] : 0; }
@@ -99,7 +99,13 @@ export class AudioOutputSharedData {
   set blockCount(x) { if (this.intArray) this.intArray[2] = x; }
 
   get processCount() { return this.intArray ? this.intArray[8] : 0; }
-  set processCount(x) { if (this.intArray) this.intArray[8] = x; }
+  set processCount(x) {
+    if (this.intArray) {
+      this.intArray[8] = x;
+      Atomics.notify(this.intArray, 8);
+    }
+  }
+
 
   get readBlockNr() { return this.intArray ? this.intArray[9] : 0; }
   set readBlockNr(x) { if (this.intArray) this.intArray[9] = x; }
@@ -108,15 +114,15 @@ export class AudioOutputSharedData {
   set readBufferPos(x) {
     if (this.intArray) {
       this.intArray[10] = x;
-      Atomics.notify(this.intArray, 10, 1);
+      Atomics.notify(this.intArray, 10);
     }
   }
 
   get bufferEmptyCount() { return this.intArray ? this.intArray[11] : 0; }
   set bufferEmptyCount(x) { if (this.intArray) this.intArray[11] = x; }
   
-  get contextTime() { return this.intArray ? this.intArray[12] : 0; }
-  set contextTime(x) { if (this.intArray) this.intArray[12] = x; }
+  get contextTime() { return this.intArray ? this.floatArray[12] : 0; }
+  set contextTime(x) { if (this.intArray) this.floatArray[12] = x; }
 }
 
 class JustStreamShared extends AudioWorkletProcessor {
@@ -128,6 +134,7 @@ class JustStreamShared extends AudioWorkletProcessor {
     this.sd = new AudioOutputSharedData();
 
     this.bufferPos = 0;
+    this.hasSoundCount = 0;
   }
 
   onmessage(event) {
@@ -135,19 +142,22 @@ class JustStreamShared extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    if (this.sd.readBlockNr === this.sd.nextWriteBlockNr) {
-      // Wait a maximum of 100ms for the next block
-      // This is not allowed because we should never wait here
-      // But how can I get super tight timings otherwize, just another case of we whould never
-      // theoreticaly bla bla bla
-      // this.sd.waitOnNextBlock(10);
-      // So let's do a busy wait with console log as delay :+)
-      for (let ix = 0; ix < 10; ix++) {
-        if (this.sd.readBlockNr !== this.sd.nextWriteBlockNr) {
-          break;
-        }
-      }
-    }
+    // This only increases the delay, currentime starts lagging behind if we block here
+    // if (this.sd.readBlockNr === this.sd.nextWriteBlockNr) {
+    //   // Wait a maximum of 100ms for the next block
+    //   // This is not allowed because we should never wait here
+    //   // But how can I get super tight timings otherwize, just another case of we whould never
+    //   // theoreticaly bla bla bla
+    //   // this.sd.waitOnNextBlock(10);
+    //   // So block the hell out of it, other code calculates samples here and also block it but i can't 
+    //   // because i'm calculatin in an other thread becaus ther is no OfsscreenCanvas here :( Piss poor shit WebAudio Implementation :( :( :(
+    //   for (let ix = 0; ix < 10; ix++) {
+    //     if (this.sd.readBlockNr !== this.sd.nextWriteBlockNr) {
+    //       break;
+    //     }
+    //   }
+    // }
+    let hasSound = false;
     if (this.sd.readBlockNr < this.sd.nextWriteBlockNr) {
 
       // Why are there multiple outputs here, multiple stereo streams?
@@ -160,7 +170,11 @@ class JustStreamShared extends AudioWorkletProcessor {
       // Since different samplecounts for channels would be stupid we use the length of channel0
       for (let i = 0; i < output[0].length; i++) {
         for (let channelIx = 0; channelIx < output.length; channelIx++) {
-          output[channelIx][i] = fa[ofs + this.bufferPos++];
+          let sample = fa[ofs + this.bufferPos++];
+          if (Math.abs(sample) > 0.01) {
+            hasSound = true;
+          }
+          output[channelIx][i] = sample;
         }
         if (this.bufferPos >= this.sd.blockSize) {
           this.bufferPos = 0;
@@ -185,6 +199,14 @@ class JustStreamShared extends AudioWorkletProcessor {
     this.sd.readBufferPos = this.bufferPos;
     this.sd.contextTime = globalThis.currentTime;
     this.sd.processCount++;
+
+    if (hasSound) {
+      if (this.hasSoundCount++ === 0) {
+        console.log('sound: ', globalThis.currentTime);
+      }
+    } else {
+     this.hasSoundCount = 0;
+    }
 
     return true;
   }
