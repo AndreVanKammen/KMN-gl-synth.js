@@ -235,7 +235,7 @@ export class SynthBaseEntry {
       this.buffers = [];
     }
     for (let resolver of this._finishResolvers) {
-      resolver();
+      resolver(this);
     }
     this._finishResolvers = [];
   }
@@ -598,7 +598,7 @@ class SynthPlayData {
       //   continue;
       // }
 
-      if (!entry.isStarted) {
+      if (!entry.isStarted) { 
         // let t = entry.synthStart - synthTime;
         // if (t < 0.0) {
         //   // Prevent multiple times in one run, or does the line here handle that?
