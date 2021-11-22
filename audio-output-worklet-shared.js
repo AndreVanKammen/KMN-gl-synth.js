@@ -64,7 +64,7 @@ export class AudioOutputSD {
   }
 }
 
-class AudioOutput extends AudioOutputSD {
+export class AudioOutputShared extends AudioOutputSD {
   constructor(options) {
     super(options);
 
@@ -116,5 +116,3 @@ class AudioOutput extends AudioOutputSD {
     }
   }
 }
-
-export default AudioOutput;
