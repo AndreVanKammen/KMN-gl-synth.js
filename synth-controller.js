@@ -194,7 +194,7 @@ class SynthController {
   }
 
   handleAudioDataRequest () {
-    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
+    while (this.audioOutput.dataInBuffer < this.options.keepInBuffer + this.webGLSynth.bufferWidth) {
       // console.log('.', this.audioOutput.dataInBuffer);
       let start = globalThis.performance.now();
       // this.audioOutput.postBuffer(spoofBuffer)
@@ -225,7 +225,7 @@ class SynthController {
       this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
       // console.log('this.calcTimeAvg', this.calcTimeAvg.toFixed(2));
     }
-   
+       
     let newOutputTimeDiff =
       (this.webGLSynth.synthTime - (this.audioOutput.dataInBuffer / this.channelCount) / this.sampleRate) -
       this.audioOutput.getContextTime();// audioCtx.getOutputTimestamp().contextTime;
@@ -239,7 +239,7 @@ class SynthController {
       //   this.options.keepInBuffer);
       this.synthOutputTimeDiff = newOutputTimeDiff;
     } else {
-      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.9999 + 0.0001 * newOutputTimeDiff;
+      this.synthOutputTimeDiff = this.synthOutputTimeDiff * 0.99 + 0.01 * newOutputTimeDiff;
     }
 
     this.currentLatencyTime = (((this.audioOutput.dataInBuffer / this.channelCount) / this.sampleRate) * 1000);

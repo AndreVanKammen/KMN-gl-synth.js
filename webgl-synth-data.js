@@ -235,7 +235,7 @@ export class SynthBaseEntry {
       this.buffers = [];
     }
     for (let resolver of this._finishResolvers) {
-      resolver();
+      resolver(this);
     }
     this._finishResolvers = [];
   }
@@ -337,11 +337,12 @@ export class SynthNote extends SynthBaseEntry {
     this.audioOffset = data.audioOffset || 0;
     this.streamNr = -1;
     this.time = 0;
-    this.phaseTime = 0;
 
     this.timeZone = timeZone; // TimeZone's are used to sync the different input clocks to synthTime
     this.startTime = time;
     this.endTime = time + maxNoteLength + extraAfterRelease;
+
+    this.phaseTime = this.owner.convertTime(this.owner.synth.synthTime, time, timeZone);;
 
     this.timeVersion = 0;
     this.synthStart = 0.0;
@@ -598,7 +599,7 @@ class SynthPlayData {
       //   continue;
       // }
 
-      if (!entry.isStarted) {
+      if (!entry.isStarted) { 
         // let t = entry.synthStart - synthTime;
         // if (t < 0.0) {
         //   // Prevent multiple times in one run, or does the line here handle that?
