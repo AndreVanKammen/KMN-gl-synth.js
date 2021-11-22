@@ -3,8 +3,8 @@
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 import WebGLSynth from './webgl-synth.js';
-import AudioOutput, { AudioOutputSD } from './audio-output-worklet-shared.js';
-// import AudioOutput from './audio-output-worklet.js';
+// import AudioOutput, { AudioOutputSD } from './audio-output-worklet-shared.js';
+import AudioOutput from './audio-output-worklet.js';
 import SystemShaders from './webgl-synth-shaders.js';
 import defer from '../KMN-utils.js/defer.js';
 
@@ -266,10 +266,10 @@ class SynthController {
 
       if (this.options.sharedArray) {
         // TODO: make it auto-switching for shared memory version or not
-        this.audioOutput = new AudioOutputSD({
-          sharedArray: this.options.sharedArray,
-          ...this.options.audioOutput
-        });
+        // this.audioOutput = new AudioOutputSD({
+        //   sharedArray: this.options.sharedArray,
+        //   ...this.options.audioOutput
+        // });
       } else {
         this.audioOutput = new AudioOutput(this.options.audioOutput);
       }
