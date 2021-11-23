@@ -264,7 +264,7 @@ class SynthController {
     if (!this.isInitialized) {
       this.isInitialized = true;
 
-      if (globalThis.SharedArrayBuffer) {
+      if (this.options.useSharedArrayBuffer && globalThis.SharedArrayBuffer) {
         if (this.options.sharedArray) {
           console.info('Audio output to SharedArrayBuffer');
           // TODO: make it auto-switching for shared memory version or not
