@@ -341,13 +341,13 @@ void main(void) {
   sampleVal *= 
     aftertouch *
     volume;
+    //  clamp(time * 50.,0.0,1.0) * // 20ms attack
+    //  (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
+
   if ((time<0.0) || (time>releaseTime)) {
     sampleVal *= 0.0;
   }
-    // clamp(time * 50.,0.0,1.0) * // 20ms attack
-    // (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
-
-  // sampleVal *= vec2(pan, 1.0 - pan);
+    // sampleVal *= vec2(pan, 1.0 - pan);
   // sampleVal += sin(float(sampleNr)/100.0*pi2);
   
   // Return the sound to the videocard buffer at half volume
