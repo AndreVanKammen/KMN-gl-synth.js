@@ -1144,23 +1144,23 @@ class WebGLSynth {
       sourceIx += ~~force4Components
     }
 
-    if (this.automaticVolume) {
-      // Automatic volume correction
-      let maxLevel = 0.0;
-      for (let ix = 0; ix < this.floatWidth; ix++) {
-        maxLevel = Math.max(maxLevel, Math.abs(bufferData[ix]));
-        if (!isFinite(bufferData[ix])) {
-          if (isNaN(bufferData[ix])) {
-            this.nanCount++;
-          } else {
-            this.infiniteCount++;
-          }
-          bufferData[ix] = 0.0;
+    // Automatic volume correction
+    let maxLevel = 0.0;
+    for (let ix = 0; ix < this.floatWidth; ix++) {
+      maxLevel = Math.max(maxLevel, Math.abs(bufferData[ix]));
+      if (!isFinite(bufferData[ix])) {
+        if (isNaN(bufferData[ix])) {
+          this.nanCount++;
+        } else {
+          this.infiniteCount++;
         }
+        bufferData[ix] = 0.0;
       }
-      this.maxLevel = maxLevel // * this.correctiveVolume
+    }
+    this.maxLevel = maxLevel // * this.correctiveVolume
 
-      // console.log(maxLevel)
+    if (this.automaticVolume) {
+        // console.log(maxLevel)
       if (maxLevel > 0.001) {
         let newValue = Math.min(0.4, (1.0 / maxLevel));
         if (newValue < this.correctiveVolume) {
