@@ -74,7 +74,7 @@ class WebGLSynth {
     // this.glInternalFormat = [gl.R32F, gl.RG32F, gl.RGB32F,gl.RGBA32F][formatIndex];
     // this.glFormat = [gl.RED, gl.RG, gl.RGB, gl.RGBA][formatIndex];
 
-    this.outputTexture = this.createSampleTextures(1, 1);
+    this.setOutputCount(1);
 
     this.sampleTextures = [
       this.createSampleTextures(this.bufferCount),
@@ -120,8 +120,6 @@ class WebGLSynth {
     this.readSampleBuffer = new Float32Array(this.floatWidthGPU);
 
     this.backBufferTestBuffer = new Float32Array(this.bufferWidth * 1 * 4),
-    // The buffer for output of the synth;
-    this.outputBuffer = new Float32Array(this.bufferWidth * this.componentCount);
 
     // Did we send the data to the videocard?
     this.samplesCalculated = false;
@@ -165,6 +163,12 @@ class WebGLSynth {
   }
   dispose() {
     // TODO
+  }
+
+  setOutputCount(outputBuffersCount) {
+    this.outputBuffersCount = outputBuffersCount;
+    this.outputTexture = this.createSampleTextures(outputBuffersCount, 1);
+    this.outputBuffer = new Float32Array(this.bufferWidth * this.componentCount * outputBuffersCount);
   }
 
   startRecordAnalyze(bufferSize, fragmentWidth, step) {
@@ -1025,7 +1029,6 @@ class WebGLSynth {
       // console.log('pass count:   ', maxPassNr);
       // console.log('output count: ', calculatedTracks.length);
     }
-
 
     this.totalEntryTime += stop - start;
 
