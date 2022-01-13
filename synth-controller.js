@@ -85,6 +85,9 @@ class SynthController {
     }
     this.isInitialized = false;
   }
+  
+  handleNewBuffer() {
+  }
 
   getNextBuffer() {
     // this.webGLSynth.gl.clientWaitSync(this.webGLSynth.webGLSync, 0, 10);
@@ -213,6 +216,7 @@ class SynthController {
             this.webGLSynth.getCalculatedSamples(this.audioOutput.sd);
           } else {
             this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+            this.handleNewBuffer();
           }
         }
       } else {

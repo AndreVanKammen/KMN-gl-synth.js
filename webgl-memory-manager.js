@@ -111,6 +111,9 @@ export class TrackLineInfo {
     // TODO: Add a max of 3 backbuffers (because most videocards can do 4 outputs)
 
     this.bufferType = 0; // 0=sampleData (time), 1=Frequency Data
+
+    // Used for getting data from the synth to the output buffer
+    this.exportOutputNr = 0;
   }
 
   updateAllocation(passNr, count) {

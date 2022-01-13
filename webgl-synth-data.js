@@ -170,8 +170,22 @@ export class SynthBaseEntry {
 
     this.synth = null; // Is filled by the synth at process time
 
+    /** @type {{ bufferNr:number, outputNr:number }[]} */
+    this.outputs = [];
+    
     this._finishResolvers = [];
   }
+
+  setOutputData(bufferNr, outputNr) {
+    for (let ix = 0; ix < this.outputs.length; ix++) {
+      if (this.outputs[ix].bufferNr) {
+        this.outputs[ix].outputNr = outputNr;
+        return;
+      }
+    }
+    this.outputs.push({ bufferNr, outputNr });
+  }
+
 
   async waitForFinished() {
     return new Promise((resolve) => {
