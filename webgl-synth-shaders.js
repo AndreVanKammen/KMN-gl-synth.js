@@ -372,11 +372,12 @@ void main(void) {
   } else {
     lineX = -offsetCorrection;
   }
-  trackLineInfo.x = int(floor(vertexPosition.y));
-  trackLineInfo.y = int(floor(vertexPosition.z));
+  int currentLine = int(floor(vertexPosition.z));
+  trackLineInfo.x = currentLine / bufferHeight;
+  trackLineInfo.y = currentLine % bufferHeight;
   trackLineInfo.z = int(floor(vertexPosition.w));
   
-  gl_Position = vec4(vertexPosition.x, 0.5, 1.0, 1.0);
+  gl_Position = vec4(vertexPosition.x, vertexPosition.y, 0.0, 1.0);
 }`,
 copyLine: /*glsl*/`precision highp float;
 precision highp int;
