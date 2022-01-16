@@ -1144,7 +1144,9 @@ class WebGLSynth {
     // 
 
     if (!this.webGLSync) {
-      bufferData.fill(0);
+      if (!sharedData) {
+        bufferData.fill(0);
+      }
       return bufferData;
     }
     
