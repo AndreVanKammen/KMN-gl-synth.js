@@ -570,5 +570,106 @@ block(phase)`,
 saw(phase)`,
 "triangle": /*glsl*/`// #include formula
 triangle(phase)`,
+/**********************************************************************/  
+"honkeyPiano": /*glsl*/`precision highp float;
+
+in float time;
+in float releaseTime;
+
+in float note;
+in float velocity;
+
+out vec4 fragColor;
+
+uniform sampler2D controlTexture;
+
+#define modulation getControl(1)
+#define volume getControl(7)
+#define pan getControl(10)
+#define pitch getControl(129)
+#define harmonics 15
+
+float getControl(int x) {
+  // TODO interpolation
+  return texelFetch(controlTexture, ivec2(x,0), 0).x;
+}
+
+const float pi2 = 6.283185307179586;
+#define oversampleCount 1
+#define oversampleDist (1.0 / 48000.0 / float(oversampleCount))
+
+float noise (float st) {
+     return fract(sin(dot(st,
+                          123.9898))*
+               93758.5453123);
+}
+
+vec2 pianoSingle(float time,float note)
+{
+  if (time<0.0 || time > 30.0)
+    return vec2(0.0);
+    
+  float mult = pow(2.0,note/12.0);
+  float f = 25.0 * 8.175798915643707 * mult;
+  float t = time * (1.0 + 5.0 * (mult / 96.0));
+
+  // Give lower notes louder harmonics to make them sound brighter and sharper
+  // make higher harmonics fade faster
+  float n = max(0.3, 8.3 - note / 8.7 + pow(velocity,0.2)*2.0);
+  if (modulation > 0.001) {
+    n = 0.5 + pow(modulation, 2.0) * 12.0;
+  }
+  float sampleX = 0.;
+ 
+  float envelopeInDb = max(0.0, max(
+    80.0 - time * 45.0, 
+    68.0 - (pow(t + 2., 3.) - 1.01) * .26 ));
+  float envelope = (pow(2.0, envelopeInDb / 10.0) - 1.0) / 256.0; // 80db = 1.0
+
+  for (int i=25; i>0; i--)
+  {
+    if ((f<1800000.0) && (i <= harmonics)) {
+      sampleX = (sampleX * n + 
+                 sin(pi2 * f * time)
+                 )/(n+1.0);
+    }
+    f -= 8.175798915643707 * mult;
+  }
+        
+  float balanceLeft = 0.7-note/127.0*0.5;
+  float balanceRight = 1.0-balanceLeft;
+
+  balanceLeft  *= (0.5 + (pan-0.5));
+  balanceRight *= (0.5 - (pan-0.5));
+
+  sampleX *= envelope;
+  sampleX *= volume;
+  sampleX *= 1.0-smoothstep(releaseTime,releaseTime+0.2,time);
+
+  // Make volume act like damper, uncomment next line and comment 2 previous lines
+  // sampleX *= 1.0-volume*smoothstep(releaseTime,releaseTime+0.2,time);
+        
+  return vec2(sampleX * 2.0 * balanceLeft,sampleX * balanceRight) * min(time * 500.0, 1.0);
+}
+
+
+void main(void) {
+  // Since a piano has 3 wires we calculate them all with a small offset
+  vec2 sampleVal = vec2(0);
+  float n = note;
+  float n1 = 1.0 - 2.0 * noise(n);
+  float n2 = 1.0 - 2.0 * noise(n+173.0);
+  float n3 = 1.0 - 2.0 * noise(n+1258.0);
+  for (int i = 0; i<oversampleCount; i++) {
+    float t = time - 1.0* oversampleDist * 1.0 * float(i);
+    sampleVal +=
+         (0.93*pianoSingle(t-0.00007,float(n+0.09*n1)).xy +
+          0.89*pianoSingle(t-0.00003,float(n+0.09*n2)).xy +
+          0.96*pianoSingle(t-0.00001,float(n-0.01*n3)).xy
+          );
+  }
+  fragColor = vec4(sampleVal * pow(velocity, 1.5) / float(oversampleCount), 0.0, 1.0);
+}`,
+
 }
 export default SystemShaders
