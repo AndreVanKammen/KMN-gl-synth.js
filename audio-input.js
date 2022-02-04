@@ -44,7 +44,7 @@ class AudioInput {
   }
 
   async startCapture() {
-    if (navigator.getUserMedia)
+    if (navigator.mediaDevices?.getUserMedia)
     {
       this.initializeStream (await navigator.mediaDevices.getUserMedia({audio: {latency: {exact: 0.010}}, video: false}));
         // this.initializeStream.bind(this),
@@ -81,17 +81,18 @@ class AudioInput {
     this.audioInput.connect(this.processor);
 
     // SO AND THANKS FOR THIS ANNOYING LINE I FORGOT. APPARENTLY I HAVE 
-    // TO CONNECT MY processor TO A NON EXISTING OUTPUT (it has none) FOR IT TO WORK. 
+    // TO CONNECT MY processor TO A NOT EXISTING OUTPUT (it has none) FOR IT TO WORK. 
     // NO ERRORS JUST NOTHING, THANKS FOR WASTING MY TIME, REALLY WTF?
     this.processor.connect(this.audioContext.destination);
   }
 
   handleAudio(event) {
     // Again with the stupidly chosen channel seperation :(
+    // This way data from the same time ends up in two different portions of memory, very inneficient
     const samplesL = event.inputBuffer.getChannelData(0);
     const samplesR = event.inputBuffer.getChannelData(1);
     // What if they have different lengths? Oh wait that should never 
-    // happen (That's the hint you are doing it wrong audiocontext API)
+    // happen (That's another hint you are doing it wrong Web Audio API)
 
     let destIX = 0;
     for (let ix = 0; ix < samplesL.length; ix++) {
