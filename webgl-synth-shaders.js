@@ -517,7 +517,7 @@ vec4 effectMain(void) {
     float progress = (float(ix) / (float(bufW2))) ;
     float cycle = n * progress;
     float phase = pi2 * cycle;
-    sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
+    // sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
     tracer += vec4( v * sampleValue.x, 
@@ -526,26 +526,98 @@ vec4 effectMain(void) {
   return tracer / float(bufW2);
 }
 `,
-"iDFT": /*glsl*/`// #include effect4
+  "iDFT": /*glsl*/`// #include effect4
+
+  vec4 fourierMain(int offset) {
+    float n = round(pixel_position.x) + float(bufferWidth - offset);
+  
+    float frequencyRatio = pow(2.0, (12.0 - pitchRange * pitch + getControl(133)) / 12.0) / 2.0;
+    if (getControl(21) < 0.5) {
+      frequencyRatio = 1.0;
+    }
+  
+    vec2 sampleValue= vec2(0.0);
+    for (int ix = 0; ix < bufferWidth; ix++) {
+      vec4 fourierValue = getSingleInputSample4(ix - (bufferWidth - offset));
+      float progress = (n / float(bufferWidth*2));
+      float phase = (float(ix))//+round(10.0+pitch*10.0))
+                    * pi2 
+                    * progress * frequencyRatio;
+  
+      vec2 v = vec2(cos(phase),sin(phase)) * (0.5 - 0.5 * cos(progress * pi2));
+      sampleValue += fourierValue.xz * v.x- fourierValue.yw * v.y;
+    }
+  
+    return vec4(sampleValue ,0.0,1.0);
+  }
+  
+  vec4 effectMain(void) {
+    if (time<0.0) {
+      return vec4(0.0);
+    }
+    return 
+      fourierMain(0) +
+      fourierMain(bufferWidth);
+  }
+`,
+  "DFT_log": /*glsl*/`// #include effect4
+
+uniform sampler2D backBufferIn;
+uniform int processCount;
+
+flat in int backBufferIx;
+
+const int bufW2 = bufferWidth * 2;
+const float lowestFreq = float(sampleRate) / float(bufW2);
+
+vec4 effectMain(void) {
+  if (time<0.0) {
+    return vec4(0.0);
+  }
+  
+  float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
+  float f = 8.175798915643707 * pow(2.0, note / 12.0);
+  float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
+  float n = f / lowestFreq;
+
+  vec4 tracer = vec4(0.0);
+
+  for (int ix = 0; ix < bufW2; ix++) {
+    vec4 sampleValue = getSingleInputSample4(ix - bufW2);//bufferWidth);
+    float progress = (float(ix) / (float(bufW2))) ;
+    float cycle = n * progress;
+    float phase = pi2 * cycle;
+    // sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
+    vec2 v = vec2(cos(-phase),sin(-phase));
+
+    tracer += vec4( v * sampleValue.x, 
+                    v * sampleValue.y);//  * (f2-f)*0.01;
+  }
+  return tracer / float(bufW2);
+}
+`,
+"iDFT_log": /*glsl*/`// #include effect4
+
+const int bufW2 = bufferWidth * 2;
+const float lowestFreq = float(sampleRate) / float(bufW2);
 
 vec4 fourierMain(int offset) {
   float n = round(pixel_position.x) + float(bufferWidth - offset);
 
-  float frequencyRatio = pow(2.0, (12.0 - pitchRange * pitch + getControl(133)) / 12.0) / 2.0;
-  if (getControl(21) < 0.5) {
-    frequencyRatio = 1.0;
-  }
-
   vec2 sampleValue= vec2(0.0);
   for (int ix = 0; ix < bufferWidth; ix++) {
     vec4 fourierValue = getSingleInputSample4(ix - (bufferWidth - offset));
-    float progress = (n / float(bufferWidth*2));
-    float phase = (float(ix))//+round(10.0+pitch*10.0))
+    float progress = (n / float(bufW2));
+    float note = float(ix) / float(bufferWidth) * 128.0;
+    float f = 8.175798915643707 * pow(2.0, note / 12.0);
+    float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
+      // float n = ;
+    float phase = (float(f / lowestFreq))//+round(10.0+pitch*10.0))
                   * pi2 
-                  * progress * frequencyRatio;
+                  * progress;
 
     vec2 v = vec2(cos(phase),sin(phase));
-    sampleValue += fourierValue.xz * v.x- fourierValue.yw * v.y;
+    sampleValue += (fourierValue.xz * v.x- fourierValue.yw * v.y) * (f2-f)*0.01;;
   }
 
   return vec4(sampleValue ,0.0,1.0);
