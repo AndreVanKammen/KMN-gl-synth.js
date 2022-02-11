@@ -616,8 +616,8 @@ vec4 fourierMain(int offset) {
                   * pi2 
                   * progress;
 
-    vec2 v = vec2(cos(phase),sin(phase));
-    sampleValue += (fourierValue.xz * v.x- fourierValue.yw * v.y) * (f2-f)*0.01;;
+    vec2 v = vec2(cos(phase),sin(phase)) * (0.5 - 0.5 * cos(progress * pi2));
+    sampleValue += (fourierValue.xz * v.x- fourierValue.yw * v.y) * (f2-f)*0.004;
   }
 
   return vec4(sampleValue ,0.0,1.0);
