@@ -587,7 +587,7 @@ vec4 effectMain(void) {
     float progress = (float(ix) / (float(bufW2))) ;
     float cycle = n * progress;
     float phase = pi2 * cycle;
-    // sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
+    sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
     tracer += vec4( v * sampleValue.x, 
@@ -616,7 +616,7 @@ vec4 fourierMain(int offset) {
                   * pi2 
                   * progress;
 
-    vec2 v = vec2(cos(phase),sin(phase)) * (0.5 - 0.5 * cos(progress * pi2));
+    vec2 v = vec2(cos(phase),sin(phase));// * (0.5 - 0.5 * cos(progress * pi2));
     sampleValue += (fourierValue.xz * v.x- fourierValue.yw * v.y) * (f2-f)*0.004;
   }
 
