@@ -111,6 +111,7 @@ class SynthController {
       this.webGLSynth.stopRecordAnalyze();
       console.log('Processed ',this.analyzeFrameCount,' audio frames in ',(performance.now() - this.speedTestStart).toFixed(2),'ms')
       this.audioOutput.onCalcBuffer = this.handleAudioDataRequestBound;
+      this.isAnalyzing = false;
       this.analyzeResolver();
       this.analyzeResolver = null;
     }
@@ -122,6 +123,7 @@ class SynthController {
 
   async runAnalyze() {
     let result = new Promise((resolve) => {
+      this.isAnalyzing = true;
       this.audioOutput.onCalcBuffer = undefined;
 
       this.haltAnalyze = false;
@@ -196,7 +198,7 @@ class SynthController {
     }
   }
 
-  handleAudioDataRequest () {
+  handleAudioDataRequest() {
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer + this.webGLSynth.bufferWidth) {
       // console.log('.', this.audioOutput.dataInBuffer);
       let start = globalThis.performance.now();
