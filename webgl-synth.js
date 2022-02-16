@@ -1084,9 +1084,8 @@ class WebGLSynth {
         }
       }
     }
-    if (!this.recordAnalyze) {
-      this.mixdownToOutput(calculatedTracks);
-    }
+    
+    this.mixdownToOutput(calculatedTracks);
     this.calculateVolume(calculatedTracks);
     if (outputInfos.length > 0) {
       this.copyDataToOutput(outputInfos);
