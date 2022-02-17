@@ -477,7 +477,7 @@ class SynthPlayData {
     if (this.timeOffsets.hasOwnProperty(timeZone)) {
       return synthTime - this.timeOffsets[timeZone] + this.synth.bufferTime * 2.0;
     } else {
-      console.error('No time available for calculating time offset!');
+      return synthTime;
     }
   }
 
