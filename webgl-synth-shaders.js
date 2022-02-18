@@ -623,14 +623,12 @@ vec4 effectMain(void) {
   float history = fract(note);
   int extraOffset = int(floor(history * float(bufferWidth)));
 
-  float samplesPerCycle = min(float(sampleRate) / f,float(bufW2));
-  float sWidth = max(samplesPerCycle, round(float(bufW2 / 8)));
-  sWidth -= mod(sWidth, samplesPerCycle);
-  sWidth = round(float(bufW2 / 4));
+  // float samplesPerCycle = min(float(sampleRate) / f,float(bufW2));
+  // float sWidth = max(samplesPerCycle, round(float(bufW2 / 8)));
+  // sWidth -= mod(sWidth, samplesPerCycle);
+  // extraOffset += int(round((float(bufW2) - sWidth)) * 0.5);
 
-  extraOffset += int(round((float(bufW2) - sWidth)) * 0.5);
-
-  int sampleWidth = int(round(sWidth));// int(round(float(bufW2) / binsPerNote));
+  int sampleWidth = bufW2; // int(round(float(bufW2) / binsPerNote));
   
   float lowestFreq = float(sampleRate) / float(sampleWidth);
   float n = f / lowestFreq;
@@ -641,7 +639,7 @@ vec4 effectMain(void) {
     float progress = (float(ix) / (float(sampleWidth))) ;
     float cycle = n * progress;
     float phase = pi2 * cycle;
-    sampleValue *= pow((0.5 - 0.5 * cos(progress * pi2)),2.0);
+    sampleValue *= pow((0.5 - 0.5 * cos(progress * pi2)), 0.25 + (note / 32.0));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
     tracer += vec4( v * sampleValue.x, 
