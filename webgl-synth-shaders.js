@@ -560,7 +560,7 @@ vec4 effectMain(void) {
       fourierMain(bufferWidth);
   }
 `,
-  "DFT_log": /*glsl*/`// #include effect4
+"DFT_log": /*glsl*/`// #include effect4
 
 uniform sampler2D backBufferIn;
 uniform int processCount;
@@ -592,6 +592,60 @@ vec4 effectMain(void) {
 
     tracer += vec4( v * sampleValue.x, 
                     v * sampleValue.y);//  * (f2-f)*0.01;
+  }
+  return tracer / float(bufW2);
+}
+`,
+
+  "DFT_log_analyze": /*glsl*/`// #include effect4
+
+uniform sampler2D backBufferIn;
+uniform int processCount;
+
+flat in int backBufferIx;
+
+const int bufW2 = bufferWidth * 2;
+
+vec4 effectMain(void) {
+  if (time<0.0) {
+    return vec4(0.0);
+  }
+  
+  float binsPerNote = float(bufferWidth) / 128.0;
+  float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
+  float f = 8.175798915643707 * pow(2.0, note / 12.0);
+  float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
+  // float history = abs(fract(note) * 2.0 - 1.0);
+  // if (mod(float(trackLineInfo.z),2.0)<0.99) {
+  //   history = 1.0 - history;
+  // }
+  
+  float history = fract(note);
+  int extraOffset = int(floor(history * float(bufferWidth)));
+
+  float samplesPerCycle = min(float(sampleRate) / f,float(bufW2));
+  float sWidth = max(samplesPerCycle, round(float(bufW2 / 8)));
+  sWidth -= mod(sWidth, samplesPerCycle);
+  sWidth = round(float(bufW2 / 4));
+
+  extraOffset += int(round((float(bufW2) - sWidth)) * 0.5);
+
+  int sampleWidth = int(round(sWidth));// int(round(float(bufW2) / binsPerNote));
+  
+  float lowestFreq = float(sampleRate) / float(sampleWidth);
+  float n = f / lowestFreq;
+
+  vec4 tracer = vec4(0.0);
+  for (int ix = 0; ix < sampleWidth; ix++) {
+    vec4 sampleValue = getSingleInputSample4(ix - sampleWidth- extraOffset);//bufferWidth);
+    float progress = (float(ix) / (float(sampleWidth))) ;
+    float cycle = n * progress;
+    float phase = pi2 * cycle;
+    sampleValue *= pow((0.5 - 0.5 * cos(progress * pi2)),2.0);
+    vec2 v = vec2(cos(-phase),sin(-phase));
+
+    tracer += vec4( v * sampleValue.x, 
+                    v * sampleValue.y);
   }
   return tracer / float(bufW2);
 }
