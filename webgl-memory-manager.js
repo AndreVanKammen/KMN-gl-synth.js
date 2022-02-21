@@ -65,8 +65,8 @@ export class WebGLMemoryManager {
     return -1;
   }
 
-  getTrackLineInfo() {
-    return new TrackLineInfo(this);
+  getTrackLineInfo(options) {
+    return new TrackLineInfo(this, options);
   }
 }
 
@@ -77,13 +77,14 @@ export class TrackLineInfo {
    * Creates an object to ke3ep track of the buffers for shader in / out
    * @param {WebGLMemoryManager} memoryManager 
    */
-  constructor (memoryManager) {
+  constructor (memoryManager, options) {
     this.memoryManager = memoryManager
+    this.options = options;
 
     this.passNr = ~~0;      // Which pass are we processed in (this determines if we use buffer A or B)
     this.start = ~~0;       // The start of it's buffers
     this.count = ~~0;       // The total number of buffers including outputCount
-    this.outputCount = ~~1; // The number of future buffers that can't be used for history (if sampleData
+    this.outputCount = this.options?.outputCount || ~~1; // The number of future buffers that can't be used for history (if sampleData
                             // The number of Frequency output buffers if DFT
                             // they are used for constructing audio from inverse DFT with overlaps
                             // A shader with this TLI as output should be rendered for this many lines
@@ -117,6 +118,7 @@ export class TrackLineInfo {
   }
 
   updateAllocation(passNr, count) {
+    count *= this.outputCount;
     if (this.passNr !== passNr || this.count !== count) {
       // TODO copy old lines to new for more consistent sound during buffer changes
       // TODO if passnr is in the same buffer we don't need to re-alocate
@@ -137,8 +139,12 @@ export class TrackLineInfo {
     this.memoryManager.freeBufferLines(this.passNr, this.start, this.count);
   }
 
+  getCurrentOutput(ix) {
+    return this.start + ((this.current - this.start + ix) % this.count);
+  }
+
   updateCurrent() {
     // Update the current to represent the current run
-    this.current = this.start + (this.memoryManager.synth.processCount % this.count);
+    this.current = this.start + ((this.memoryManager.synth.processCount * this.outputCount) % this.count);
   }
 }

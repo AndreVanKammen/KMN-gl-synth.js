@@ -544,18 +544,20 @@ class WebGLSynth {
       for (let oIX = 0; oIX < tli_out.outputCount; oIX++) {
         // TODO this now works because of grouping per channel
         channelControl = entry.channelControl;
+        let outputLineIx = tli_out.getCurrentOutput(oIX) % this.bufferHeight;
 
-        a1[attrOfs + 0] = this.synthTime - entry.time + (oIX * this.bufferTime);
-        a1[attrOfs + 1] = lineY;
+        let lineY2 = -1.0 + ((outputLineIx + 0.5) / this.bufferHeight) * 2.0;
+        a1[attrOfs + 0] = this.synthTime - entry.time;
+        a1[attrOfs + 1] = lineY2
         a1[attrOfs + 3] = entry.releaseTime;
 
-        a1[attrOfs + 4] = this.synthTime - entry.time + ((oIX + 1) *this.bufferTime);
-        a1[attrOfs + 5] = lineY;
+        a1[attrOfs + 4] = this.synthTime - entry.time;
+        a1[attrOfs + 5] = lineY2;
 
         // Only apply time stretching on pass 0 for pitchbends on notes
-        if (passNr !== 0) {
-          a1[attrOfs + 2] = this.synthTime - entry.time + (oIX * this.bufferTime);
-          a1[attrOfs + 6] = this.synthTime - entry.time + ((oIX + 1) *this.bufferTime);
+        if (passNr !== 0 || oIX !== 0) {
+          a1[attrOfs + 2] = this.synthTime - entry.time;
+          a1[attrOfs + 6] = this.synthTime - entry.time;
         } else {
           a1[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
 
@@ -603,7 +605,7 @@ class WebGLSynth {
           a3[attrOfs + 1] = a3[attrOfs + 5] = tli_in.count;
           a3[attrOfs + 2] = a3[attrOfs + 6] = tli_in.current;
         }
-        a3[attrOfs + 3] = a3[attrOfs + 7] = tli_out.backBufferIx;
+        a3[attrOfs + 3] = a3[attrOfs + 7] = -oIX;//tli_out.backBufferIx;
 
         // Sanity check here so it crashes where it should
         for (let jx = 0; jx < 8; jx++) {
@@ -684,6 +686,7 @@ class WebGLSynth {
           tli_out.backBufferIx = backBufferIx;
           console.log('New backBufferIx: ', backBufferIx);
         }
+        // TODO: this can clash if another is bufferHeight further, we need a backbuffer administration
         backBufferLines[ix] = { fromIx: tli_out.current % this.bufferHeight, backBufferIx };
       }
 
@@ -1084,7 +1087,7 @@ class WebGLSynth {
         }
       }
     }
-    
+
     this.mixdownToOutput(calculatedTracks);
     this.calculateVolume(calculatedTracks);
     if (outputInfos.length > 0) {

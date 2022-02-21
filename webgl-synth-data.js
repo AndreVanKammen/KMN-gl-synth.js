@@ -201,9 +201,10 @@ export class SynthBaseEntry {
    * @returns Last 
    */
   updateBuffers(synth, mixer, passNr) {
-    if (mixer && (mixer.effects.length>0)) {
-      while (this.buffers.length < (mixer.effects.length + 1)) {
-        this.buffers.push(synth.memoryManager.getTrackLineInfo())
+    if (mixer && (mixer.effects.length > 0)) {
+      let ix;
+      while ((ix = this.buffers.length) < (mixer.effects.length + 1)) {
+        this.buffers.push(synth.memoryManager.getTrackLineInfo(ix !== 0 ? mixer.effects[ix - 1].options : {}))
       }
       for (let ix = 0; ix < mixer.effects.length + 1; ix++) {
         let historyTime = 0.0;
@@ -255,19 +256,19 @@ export class SynthBaseEntry {
   }
 }
 export class SynthShaderInfo {
-  constructor (shaderName, shaderSettings) {
+  constructor (shaderName, options) {
     // this.trackLineInfo = new TrackLineInfo();
     this.shaderName = shaderName;
-    this.shaderSettings = shaderSettings;
+    this.options = options;
   }
 }
 class EffectShaderInfo extends SynthShaderInfo {
-  constructor (effectName, effectSettings) {
-    super(effectName, effectSettings)
+  constructor (effectName, options) {
+    super(effectName, options)
   }
   getHistoryTime() {
     // TODO
-    return 8.0;
+    return this.options?.historyTime || 2.0;
     // return 0.16;
   }
 }
@@ -310,9 +311,9 @@ export class SynthMixer extends SynthBaseEntry {
     this.streamBuffer.onGetData = audioTracks.getData.bind(audioTracks);
   }
 
-  addEffect(name) {
+  addEffect(name, options) {
     this.effects.push(
-      new EffectShaderInfo(name, {}))
+      new EffectShaderInfo(name, options))
   }
 
   setEffects(effectShaders) {

@@ -596,6 +596,51 @@ vec4 effectMain(void) {
   return tracer / float(bufW2);
 }
 `,
+"DFT_log_8": /*glsl*/`// #include effect4
+
+uniform sampler2D backBufferIn;
+uniform int processCount;
+
+flat in int backBufferIx;
+
+const int bufW2 = bufferWidth * 2;
+const float lowestFreq = float(sampleRate) / float(bufW2);
+
+vec4 effectMain(void) {
+  if (time<0.0) {
+    return vec4(0.0);
+  }
+  
+  float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
+  float f = 8.175798915643707 * pow(2.0, note / 12.0);
+  float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
+  float n = f / lowestFreq;
+  int extraOffset = bufferWidth / 8 * (7 + backBufferIx);
+
+  vec4 tracer = vec4(0.0);
+  vec4 tracerCenter = vec4(0.0);
+  int sampleWidth = bufW2; // int(round(float(bufW2) / binsPerNote));
+
+  for (int ix = 0; ix < sampleWidth; ix++) {
+    vec4 sampleValue = getSingleInputSample4(ix - sampleWidth - extraOffset);//bufferWidth);
+    float progress = (float(ix) / (float(sampleWidth)));
+    float cycle = n * progress;
+    float phase = pi2 * cycle;
+    vec2 v = vec2(cos(-phase),sin(-phase));
+
+    vec4 ft = vec4( v * sampleValue.x, 
+                    v * sampleValue.y);//  * (f2-f)*0.01;
+    tracer += ft * (0.5 - 0.5 * cos(progress * pi2));
+    tracerCenter += ft * (1.0 - step(0.2,abs(progress-0.5))) * (0.5 - 0.5 * cos((progress * 2.5 - 0.75) * pi2));
+  }
+  tracer /= float(sampleWidth);
+  tracerCenter /= float(sampleWidth) / 2.5;
+  vec4 normalized = vec4(normalize(tracer.xy), normalize(tracer.zw)); 
+  vec2 minLen = vec2(min(length(tracerCenter.xy),length(tracer.xy)), 
+                     min(length(tracerCenter.zw),length(tracer.zw)));
+  return vec4(normalized.xy * minLen.x, normalized.zw * minLen.y);
+}
+`,
 
   "DFT_log_analyze": /*glsl*/`// #include effect4
 
@@ -620,12 +665,16 @@ vec4 effectMain(void) {
   //   history = 1.0 - history;
   // }
   
-  float history = fract(note);
+  float history = fract(note * 2.0+ 1.5);
   int extraOffset = int(floor(history * float(bufferWidth)));
 
   // float samplesPerCycle = min(float(sampleRate) / f,float(bufW2));
-  // float sWidth = max(samplesPerCycle, round(float(bufW2 / 8)));
+  // float sWidth = max(samplesPerCycle, round(float(bufW2 / 4)));
+  // float divider = sWidth;
+
   // sWidth -= mod(sWidth, samplesPerCycle);
+  // sWidth /= float(bufW2 * 2);
+  // samplesPerCycle /= float(bufW2);
   // extraOffset += int(round((float(bufW2) - sWidth)) * 0.5);
 
   int sampleWidth = bufW2; // int(round(float(bufW2) / binsPerNote));
@@ -639,13 +688,16 @@ vec4 effectMain(void) {
     float progress = (float(ix) / (float(sampleWidth))) ;
     float cycle = n * progress;
     float phase = pi2 * cycle;
-    sampleValue *= pow((0.5 - 0.5 * cos(progress * pi2)), 0.25 + (note / 32.0));
+    sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
+    // sampleValue *= pow((0.5 - 0.5 * cos(progress * pi2)), 0.25 + (note / 48.0));
+    // sampleValue *= 1.0-smoothstep(sWidth,sWidth+samplesPerCycle,abs(progress-0.5));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
     tracer += vec4( v * sampleValue.x, 
                     v * sampleValue.y);
   }
-  return tracer / float(bufW2);
+  // return tracer / float(bufW2 ) / (sWidth+ 0.5 * samplesPerCycle) / 2.0;
+  return tracer / float(sampleWidth);
 }
 `,
 "iDFT_log": /*glsl*/`// #include effect4
