@@ -50,49 +50,7 @@ export class StreamBuffer {
   fill(time, streamNr) {
     //console.log(time, trackNr);
     let streamData = this.streamData[streamNr];
-    if (streamData.
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        lastTime !== time) {
+    if (streamData.lastTime !== time) {
 
       const startSampleNr = ~~Math.round(time * streamData.sampleRate);
       const minOffset = ~~Math.max(~~0,~~(startSampleNr - this.historySamples) * streamData.channelCount);

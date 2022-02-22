@@ -845,13 +845,15 @@ class WebGLSynth {
       let tli = lineInfos[ix];
       this.lastOutputTLI = tli;
 
-      a1[attrOfs + 0] = -1.0;
-      a1[attrOfs + 4] = 1.0;
+      for (let outIx = 0; outIx < tli.outputCount; outIx++) {
+        a1[attrOfs + 0] = -1.0;
+        a1[attrOfs + 4] = 1.0;
 
-      a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * (tli.exportOutputNr + 1.5) / this.outputBuffersCount;
-      a1[attrOfs + 2] = a1[attrOfs + 6] = ~~tli.current;
-      a1[attrOfs + 3] = a1[attrOfs + 7] = ~~(tli.passNr % 2);
-      attrOfs += 8;
+        a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * (tli.exportOutputNr + outIx + 1.5) / this.outputBuffersCount;
+        a1[attrOfs + 2] = a1[attrOfs + 6] = ~~tli.getCurrentOutput(outIx);
+        a1[attrOfs + 3] = a1[attrOfs + 7] = ~~(tli.passNr % 2);
+        attrOfs += 8;
+      }
     }
 
     const shader = this.copyLineShader;
