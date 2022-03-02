@@ -9,7 +9,7 @@ precision highp sampler2DArray;
 
 in vec2 pixel_position;
 
-in float phase;
+in float phaseTime;
 in float time;
 in float releaseTime;
 
@@ -43,7 +43,7 @@ const float sampleTime = (1.0 / float(sampleRate));
 const float bufferTime = (sampleTime * float(bufferWidth));
 
 #define sampleFrequency (8.175798915643707 * pow(2.0, note / 12.0))
-#define samplePhase (phase * sampleFrequency * pi2)
+#define samplePhase (phaseTime * sampleFrequency * pi2)
 
 #define synthTime (startTime + (round(pixel_position.x) * sampleTime))
 
@@ -137,7 +137,7 @@ in vec4 attributes3;
 
 // Some of these could be done by uniform in vertex, but that would require seperate draw calls
 out vec2 pixel_position;
-out float phase;
+out float phaseTime;
 out float time;
 out float releaseTime;
 
@@ -156,7 +156,7 @@ void main(void) {
                    : -offsetCorrection;
 
   time            = vertexPosition.x;
-  phase           = vertexPosition.z;
+  phaseTime       = vertexPosition.z;
   releaseTime     = vertexPosition.w; 
 
   note            = attributes2.x;
@@ -275,7 +275,7 @@ precision highp sampler2D;
 
 flat in int backBufferIx;
 
-in float phase; // PHASE ACCURATE ENOUGH?
+in float phaseTime; // PHASE ACCURATE ENOUGH?
 in float time; // TIME ACCURATE ENOUGH?
 in float releaseTime;
 
@@ -318,7 +318,7 @@ void main(void) {
   // int trackOffset = int(note) * trackSize;
   // int sampleNr = int(floor(time * float(sampleRate))) % trackSize;
   // int fragNr = (trackOffset + sampleNr) / channelCount;
-  int sampleNr = int(round(phase * float(streamSampleRate)));
+  int sampleNr = int(round(phaseTime * float(streamSampleRate)));
   if (sampleNr <0) {
     fragColor = vec4(0.0);
     return;
