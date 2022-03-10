@@ -23,6 +23,10 @@ export class AudioOutputSD {
   get dataInBuffer() {
     return this.sd.dataInBuffer;
   }
+  
+  get bufferEmptyCount() {
+    return this.sd.bufferEmptyCount;
+  }
 
   getContextTime() {
     return this.sd.contextTime;
