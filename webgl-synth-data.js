@@ -512,6 +512,9 @@ class SynthPlayData {
   }
 
   syncTime(timeZone, time, thight = false) {
+    if (timeZone == 'none') {
+      debugger;
+    }
     let synthTime = this.synth.synthTime;
     this.timeOffsets[timeZone] = synthTime - time + (thight ? 0 : this.synth.bufferTime);
   }
