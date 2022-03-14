@@ -551,13 +551,13 @@ class WebGLSynth {
         a1[attrOfs + 1] = lineY2
         a1[attrOfs + 3] = entry.releaseTime;
 
-        a1[attrOfs + 4] = this.synthTime - entry.time;
+        a1[attrOfs + 4] = this.synthTime - entry.time + this.bufferTime;
         a1[attrOfs + 5] = lineY2;
 
         // Only apply time stretching on pass 0 for pitchbends on notes
         if (passNr !== 0 || oIX !== 0) {
           a1[attrOfs + 2] = this.synthTime - entry.time;
-          a1[attrOfs + 6] = this.synthTime - entry.time;
+          a1[attrOfs + 6] = this.synthTime - entry.time   + this.bufferTime;
         } else {
           a1[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
 

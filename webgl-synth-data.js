@@ -394,12 +394,12 @@ export class SynthNote extends SynthBaseEntry {
     return this.channelControl.getControlAtTime(controlTime, otherControls.playDirection, 1.0);
   }
   
-  release (time, velocity, releaseTime = extraAfterRelease) {
+  release (time, velocity, clearNoteAfterTime = extraAfterRelease) {
     if (velocity>=0) {
       this.noteControl.addControl(time, otherControls.releaseVelocity, velocity);
     }
 
-    this.endTime = time + releaseTime;
+    this.endTime = time + clearNoteAfterTime;
     this.releaseTime = time - this.startTime;
   }
 
@@ -645,6 +645,25 @@ class SynthPlayData {
     this.executeTriggers();
     // setTimeout(this.executeTriggers, 0);
     // this.removeDeadEntries(synthTime);
+    // if (timedEntries.length === 2) {
+    //   console.log('synthtime: ', synthTime);
+    //   console.log('T0:', {
+    //     synthStart: timedEntries[0].synthStart,
+    //     startTime: timedEntries[0].startTime,
+    //     endTime: timedEntries[0].endTime,
+    //     time: timedEntries[0].time,
+    //     phaseTime: timedEntries[0].phaseTime,
+    //     releaseTime: timedEntries[0].releaseTime
+    //   });
+    //   console.log('T1:', {
+    //     synthStart: timedEntries[1].synthStart,
+    //     startTime: timedEntries[1].startTime,
+    //     endTime: timedEntries[1].endTime,
+    //     time: timedEntries[1].time,
+    //     phaseTime: timedEntries[1].phaseTime,
+    //     releaseTime: timedEntries[1].releaseTime
+    //   });
+    // }
     return timedEntries;
   }
 }
