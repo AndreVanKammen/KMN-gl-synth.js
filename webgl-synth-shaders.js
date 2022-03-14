@@ -299,6 +299,9 @@ float getControl(int x) {
   return texelFetch(controlTexture, ivec2(x,0), 0).x;
 }
 
+#define envReleaseTime getControl(72)
+#define envAttackTime getControl(73)
+
 in vec2 pixel_position;
 
 uniform sampler2D inputTexture;
@@ -340,13 +343,13 @@ void main(void) {
   // }
   sampleVal *= 
     aftertouch *
-    volume;
-    //  clamp(time * 50.,0.0,1.0) * // 20ms attack
-    //  (1.0 - clamp((time - releaseTime) * 40., 0.0, 1.0)); // 20ms decay
+    volume *
+    clamp(time * (1000.0/envAttackTime),0.0,1.0) * // 10ms attack
+    (1.0 - clamp((time - releaseTime) * (1000.0/envReleaseTime), 0.0, 1.0)); // 10ms decay
 
-  if ((time<0.0) || (time>releaseTime)) {
-    sampleVal *= 0.0;
-  }
+  // if ((time<0.0) || (time>releaseTime)) {
+  //   sampleVal *= 0.0;
+  // }
     // sampleVal *= vec2(pan, 1.0 - pan);
   // sampleVal += sin(float(sampleNr)/100.0*pi2);
   
