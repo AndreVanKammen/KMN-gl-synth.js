@@ -586,7 +586,7 @@ vec4 effectMain(void) {
   vec4 tracer = vec4(0.0);
 
   for (int ix = 0; ix < bufW2; ix++) {
-    vec4 sampleValue = getSingleInputSample4(ix - bufW2);//bufferWidth);
+    vec4 sampleValue = getSingleInputSample4(ix - bufferWidth);
     float progress = (float(ix) / (float(bufW2))) ;
     float cycle = n * progress;
     float phase = pi2 * cycle;
