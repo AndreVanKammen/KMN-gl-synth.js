@@ -281,6 +281,7 @@ class InputShaderInfo extends SynthShaderInfo {
 class IAudioTracks {
   getData = (buffer, streamNr, trackNr, trackSize2, bufferOffset, startSampleNr, count) => {};
 }
+
 let mixerHash = 123;
 export class SynthMixer extends SynthBaseEntry {
   constructor (mixer, inputShaderName) {
