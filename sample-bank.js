@@ -95,8 +95,8 @@ export class SampleBank {
     let sampleData = this.tracks[trackNr % this.tracks.length];
     let sNr = startSampleNr;
     let bufStart = streamNr * streamFloatSize;
-    let l = sampleData.leftSamples || emptyFloat64Array; 
-    let r = sampleData.rightSamples || emptyFloat64Array; 
+    let l = sampleData?.leftSamples || emptyFloat64Array; 
+    let r = sampleData?.rightSamples || emptyFloat64Array; 
     // if ((this.divider++ & 0x180) === 0x180) {
     //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
     // }

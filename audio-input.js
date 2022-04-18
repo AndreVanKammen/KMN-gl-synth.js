@@ -40,7 +40,6 @@ class AudioInput {
     this.audioContext = undefined;
     this.processor = undefined;
     this.onAudioBuffer = undefined;
-    
   }
 
   async startCapture() {
@@ -93,15 +92,16 @@ class AudioInput {
     const samplesR = event.inputBuffer.getChannelData(1);
     // What if they have different lengths? Oh wait that should never 
     // happen (That's another hint you are doing it wrong Web Audio API)
+    this.onAudioBuffer(samplesL, samplesR);
 
-    let destIX = 0;
-    for (let ix = 0; ix < samplesL.length; ix++) {
-      this.audioBuffer[destIX++] = samplesL[ix];
-      this.audioBuffer[destIX++] = samplesR[ix];
-    }
-    if (this.onAudioBuffer) {
-      this.onAudioBuffer(this.audioBuffer, samplesL.length, this.options.channelCount);
-    }
+    // let destIX = 0;
+    // for (let ix = 0; ix < samplesL.length; ix++) {
+    //   this.audioBuffer[destIX++] = samplesL[ix];
+    //   this.audioBuffer[destIX++] = samplesR[ix];
+    // }
+    // if (this.onAudioBuffer) {
+    //   this.onAudioBuffer(this.audioBuffer, samplesL.length, this.options.channelCount);
+    // }
   }
 }
 

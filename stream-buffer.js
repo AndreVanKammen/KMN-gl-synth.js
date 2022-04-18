@@ -34,10 +34,10 @@ export class StreamBuffer {
     this.lastChange = 0;
   }
 
-  getStreamNr(note) {
+  getStreamNr(trackNr) {
     const streamNr = this.streamUsed % this.streamCount; 
     this.streamData[streamNr] = {
-      trackNr: ~~note,
+      trackNr: ~~trackNr,
       lastOffset: ~~0,
       lastTime: Infinity,
       channelCount: ~~2,
