@@ -27,7 +27,7 @@ export class StreamBuffer {
     this.textureInfo = gl.createOrUpdateFloat32TextureBuffer(this.bufferData,{bufferWidth:synth.bufferWidth});
     
     // TODO: Consider other then stereo?
-    /** @type {(noteEntry: SynthNote)=> {left:Float32Array,right:Float32Array}} */
+    /** @type {(noteEntry: SynthNote, synthTime?:number)=> {left:Float32Array,right:Float32Array}} */
     this.onGetData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
 
     this.streamData = {};
@@ -106,7 +106,7 @@ export class StreamBuffer {
       const sampleCount = ~~(maxSampleNr - sampleOffset);
       
       // TODO More possible paths for other data formats
-      let leftRight = this.onGetData(noteEntry);
+      let leftRight = this.onGetData(noteEntry,synthTime);
       this._fillBufferLR(leftRight, streamNr, this.bufferData, streamData.lastOffset, this.streamFloatSize, sampleOffset, sampleCount);
 
       this.firstChange = Math.min(this.firstChange, bufStart);

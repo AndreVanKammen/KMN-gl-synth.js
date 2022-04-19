@@ -84,8 +84,9 @@ export class SampleBank {
 
   /**
    * @param {SynthNote} noteEntry
+   * @param {number} synthTime
    */
-   getData(noteEntry) {
+   getData(noteEntry, synthTime) {
     let sampleData = this.tracks[noteEntry.note % this.tracks.length];
     return {
       left: sampleData?.leftSamples || emptyFloat64Array,

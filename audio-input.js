@@ -45,7 +45,16 @@ class AudioInput {
   async startCapture() {
     if (navigator.mediaDevices?.getUserMedia)
     {
-      this.initializeStream (await navigator.mediaDevices.getUserMedia({audio: {latency: {exact: 0.010}}, video: false}));
+      this.initializeStream(await navigator.mediaDevices.getUserMedia({
+        audio: {
+          latency: { exact: 0.010 },
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          suppressLocalAudioPlayback: false,
+          
+        }, video: false
+      }));
         // this.initializeStream.bind(this),
         // (error) => console.error('getUserMedia failed: ',  error));
     }

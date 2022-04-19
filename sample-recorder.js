@@ -1,15 +1,16 @@
 import AudioInput from "./audio-input.js";
 import { SampleBank, SampleData } from "./sample-bank.js";
-import { SynthMixer, SynthNote } from "./webgl-synth-data.js";
+import SynthPlayData, { SynthMixer, SynthNote } from "./webgl-synth-data.js";
 
 export class SampleRecorder extends SampleBank {
   /**
-   * 
-   * @param {SynthMixer} mixer 
-   * @param {number} capacity 
+   * @param {SynthPlayData} playData
+   * @param {SynthMixer} mixer
+   * @param {number} capacity
    */
-  constructor(mixer, capacity) {
+  constructor(playData, mixer, capacity) {
     super(capacity);
+    this.playData = playData;
     this.mixer = mixer;
     this.audioInput = new AudioInput(); 
     this.audioInput.onAudioBuffer = this.handleRecordAudio.bind(this);
@@ -50,27 +51,35 @@ export class SampleRecorder extends SampleBank {
 
   /**
    * @param {SynthNote} noteEntry
+   * @param {number} synthTime
    */
-  getData(noteEntry) {
+  getData(noteEntry, synthTime) {
     if (!this.tracks[noteEntry.note] || this.recordTrack) {
-      if (!this.recordTrack) {
-        this.startRecording(noteEntry.note);
+      let time = synthTime - noteEntry.time;
+      if (this.recordTrackNr === noteEntry.note && time > noteEntry.releaseTime) {
+        console.log('Stop from release!');
+        if (this.recordTrack) {
+          this.endRecording();
+        }
+      } else {
+        if (!this.recordTrack) {
+          this.startRecording(noteEntry.note);
+        }
+        // if (this.recordTrackNr !== trackNr) {
+        //   this.endRecording();
+        //   this.startRecording(trackNr);
+        // }
+        this.recordTimeout = 4; // TODO calculate based on buffersizes
       }
-      // if (this.recordTrackNr !== trackNr) {
-      //   this.endRecording();
-      //   this.startRecording(trackNr);
-      // }
-      
-      this.recordTimeout = 4; // TODO calculate based on buffersizes
     } else {
       if (this.recordTrack) {
         this.endRecording();
       } else {
         let track = this.tracks[noteEntry.note];
-        console.log('Play Track:', track.sampleOffset, track.sampleLength);
+        // console.log('Play Track:', track.sampleOffset, track.sampleLength);
       }
     }
-    return super.getData(noteEntry);
+    return super.getData(noteEntry, synthTime);
   }
 
 }

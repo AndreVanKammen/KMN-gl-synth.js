@@ -279,7 +279,7 @@ class InputShaderInfo extends SynthShaderInfo {
 }
 
 class IAudioTracks {
-  /** @type {(noteEntry: SynthNote)=> {left:Float32Array,right:Float32Array}} */
+  /** @type {(noteEntry: SynthNote, synthTime?:number)=> {left:Float32Array,right:Float32Array}} */
   getData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
 }
 
