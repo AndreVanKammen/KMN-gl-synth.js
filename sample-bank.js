@@ -2,7 +2,8 @@
 // Licensed under CC BY-NC-SA 
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-const emptyFloat64Array = new Float32Array();
+import { emptyFloat64Array } from "./stream-buffer.js";
+import { SynthNote } from "./webgl-synth-data.js";
 
 class SampleBuffer {
   /**
@@ -58,16 +59,16 @@ export class SampleData {
 
   get leftSamples() {
     if (!this._leftSamples) {
-      this._leftSamples = this.sampleBuffer.leftSamples.subarray(this.sampleOffset, this.sampleLength);
+      this._leftSamples = this.sampleBuffer.leftSamples.subarray(this.sampleOffset, this.sampleOffset + this.sampleLength);
     }
     return this._leftSamples;
   }
 
   get rightSamples() {
     if (!this._rightSamples) {
-      this._rightSamples = this.sampleBuffer.rightSamples.subarray(this.sampleOffset, this.sampleLength);
+      this._rightSamples = this.sampleBuffer.rightSamples.subarray(this.sampleOffset, this.sampleOffset + this.sampleLength);
     }
-    return this.sampleBuffer.rightSamples.subarray(this.sampleOffset, this.sampleLength);
+    return this._rightSamples;
   }
 }
 
@@ -82,32 +83,15 @@ export class SampleBank {
   }
 
   /**
-   * @param {any[]} buffer
-   * @param {number} streamNr
-   * @param {number} trackNr
-   * @param {number} streamFloatSize
-   * @param {any} bufferOffset
-   * @param {any} startSampleNr
-   * @param {number} count
+   * @param {SynthNote} noteEntry
    */
-  getData(buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) {
-    let ofs = bufferOffset;
-    let sampleData = this.tracks[trackNr % this.tracks.length];
-    let sNr = startSampleNr;
-    let bufStart = streamNr * streamFloatSize;
-    let l = sampleData?.leftSamples || emptyFloat64Array; 
-    let r = sampleData?.rightSamples || emptyFloat64Array; 
-    // if ((this.divider++ & 0x180) === 0x180) {
-    //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
-    // }
-    if ((bufStart + ofs) % 2 !== 0) {
-      debugger
+   getData(noteEntry) {
+    let sampleData = this.tracks[noteEntry.note % this.tracks.length];
+    return {
+      left: sampleData?.leftSamples || emptyFloat64Array,
+      right: sampleData?.rightSamples || emptyFloat64Array
     }
-    for (let ix = 0; ix < count; ix++) {
-      buffer[bufStart + (ofs++ % streamFloatSize)] = l[sNr] || 0.0;
-      buffer[bufStart + (ofs++ % streamFloatSize)] = r[sNr++] || 0.0;
-    }
-  };
+  }
 
   /**
    * Remove track from list

@@ -534,11 +534,8 @@ class WebGLSynth {
       if (streamBuffer) {
         if (entry.streamNr < 0) {
           entry.streamNr = streamBuffer.getStreamNr(entry.note);
-          // entry.note = entry.streamNr;
-          // entry.phaseTime = entry.time;// - entry.audioOffset;
-          // console.log('tracknr assigned: ',entry.trackNr);
         }
-        streamBuffer.fill(this.synthTime - entry.phaseTime + entry.audioOffset, entry.streamNr);
+        streamBuffer.fill(entry, this.synthTime);
         // console.log('Volume: ',entry.channelControl.getControlAtTime(controlTime , 7, 0.0));
       }
       for (let oIX = 0; oIX < tli_out.outputCount; oIX++) {

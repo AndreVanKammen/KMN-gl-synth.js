@@ -1,6 +1,6 @@
 import AudioInput from "./audio-input.js";
 import { SampleBank, SampleData } from "./sample-bank.js";
-import { SynthMixer } from "./webgl-synth-data.js";
+import { SynthMixer, SynthNote } from "./webgl-synth-data.js";
 
 export class SampleRecorder extends SampleBank {
   /**
@@ -49,18 +49,12 @@ export class SampleRecorder extends SampleBank {
   }
 
   /**
-   * @param {any[]} buffer
-   * @param {number} streamNr
-   * @param {number} trackNr
-   * @param {number} streamFloatSize
-   * @param {any} bufferOffset
-   * @param {any} startSampleNr
-   * @param {number} count
+   * @param {SynthNote} noteEntry
    */
-  getData(buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count) {
-    if (!this.tracks[trackNr] || this.recordTrack) {
+  getData(noteEntry) {
+    if (!this.tracks[noteEntry.note] || this.recordTrack) {
       if (!this.recordTrack) {
-        this.startRecording(trackNr);
+        this.startRecording(noteEntry.note);
       }
       // if (this.recordTrackNr !== trackNr) {
       //   this.endRecording();
@@ -72,11 +66,11 @@ export class SampleRecorder extends SampleBank {
       if (this.recordTrack) {
         this.endRecording();
       } else {
-        let track = this.tracks[trackNr];
+        let track = this.tracks[noteEntry.note];
         console.log('Play Track:', track.sampleOffset, track.sampleLength);
       }
     }
-    return super.getData(buffer, streamNr, trackNr, streamFloatSize, bufferOffset, startSampleNr, count);
+    return super.getData(noteEntry);
   }
 
 }

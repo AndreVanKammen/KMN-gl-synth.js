@@ -1,5 +1,7 @@
-import SynthPlayData from "./webgl-synth-data.js";
+import SynthPlayData, { SynthNote } from "./webgl-synth-data.js";
 import WebGLSynth from "./webgl-synth.js";
+
+export const emptyFloat64Array = new Float32Array();
 
 export class StreamBuffer {
   /**
@@ -25,7 +27,8 @@ export class StreamBuffer {
     this.textureInfo = gl.createOrUpdateFloat32TextureBuffer(this.bufferData,{bufferWidth:synth.bufferWidth});
     
     // TODO: Consider other then stereo?
-    this.onGetData = (buffer, streamNr, trackNr, trackSize2, bufferOffset, startSampleNr, count) => {};
+    /** @type {(noteEntry: SynthNote)=> {left:Float32Array,right:Float32Array}} */
+    this.onGetData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
 
     this.streamData = {};
     this.streamUsed = 0;
@@ -35,9 +38,9 @@ export class StreamBuffer {
   }
 
   getStreamNr(trackNr) {
+    // Every track/note gets it's own stream nr so we can play the same note twice
     const streamNr = this.streamUsed % this.streamCount; 
     this.streamData[streamNr] = {
-      trackNr: ~~trackNr,
       lastOffset: ~~0,
       lastTime: Infinity,
       channelCount: ~~2,
@@ -46,8 +49,36 @@ export class StreamBuffer {
     this.streamUsed++;
     return streamNr;
   }
+  /**
+   * 
+   * @param {{left:Float32Array,right:Float32Array}} leftRight 
+   * @param {number} streamNr
+   * @param {Float32Array} buffer 
+   * @param {number} bufferOffset 
+   * @param {number} bufferSize 
+   * @param {number} startSampleNr 
+   * @param {number} count 
+   */
+  _fillBufferLR(leftRight, streamNr, buffer, bufferOffset, bufferSize, startSampleNr, count) {
+    let l = leftRight.left;
+    let r = leftRight.right;
+    let sNr = startSampleNr;
+    let bufStart = streamNr * bufferSize;
+    let ofs = bufferOffset;
+    for (let ix = 0; ix < count; ix++) {
+      buffer[bufStart + (ofs++ % bufferSize)] = l[sNr] || 0.0;
+      buffer[bufStart + (ofs++ % bufferSize)] = r[sNr++] || 0.0;
+    }
+  };
 
-  fill(time, streamNr) {
+  /**
+   * 
+   * @param {SynthNote} noteEntry 
+   * @param {number} synthTime
+   */
+  fill(noteEntry, synthTime) {
+    let time = synthTime - noteEntry.phaseTime + noteEntry.audioOffset;
+    let streamNr = noteEntry.streamNr;
     //console.log(time, trackNr);
     let streamData = this.streamData[streamNr];
     if (streamData.lastTime !== time) {
@@ -74,7 +105,9 @@ export class StreamBuffer {
       const sampleOffset = ~~(streamData.lastOffset / streamData.channelCount);
       const sampleCount = ~~(maxSampleNr - sampleOffset);
       
-      this.onGetData(this.bufferData, streamNr, streamData.trackNr, this.streamFloatSize, streamData.lastOffset, sampleOffset, sampleCount );
+      // TODO More possible paths for other data formats
+      let leftRight = this.onGetData(noteEntry);
+      this._fillBufferLR(leftRight, streamNr, this.bufferData, streamData.lastOffset, this.streamFloatSize, sampleOffset, sampleCount);
 
       this.firstChange = Math.min(this.firstChange, bufStart);
       this.lastChange = Math.max(this.lastChange, bufStart + this.streamVec4Count*4);
