@@ -4,7 +4,7 @@
 
 import defer from '../KMN-utils.js/defer.js';
 import { otherControls } from './otherControls.js';
-import { StreamBuffer } from './stream-buffer.js';
+import { emptyFloat64Array, StreamBuffer } from './stream-buffer.js';
 import { TrackLineInfo } from './webgl-memory-manager.js';
 import { SynthExecutePlanner } from './webgl-synth-execute-plan.js';
 import WebGLSynth from './webgl-synth.js';
@@ -279,7 +279,8 @@ class InputShaderInfo extends SynthShaderInfo {
 }
 
 class IAudioTracks {
-  getData = (buffer, streamNr, trackNr, trackSize2, bufferOffset, startSampleNr, count) => {};
+  /** @type {(noteEntry: SynthNote)=> {left:Float32Array,right:Float32Array}} */
+  getData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
 }
 
 let mixerHash = 123;
