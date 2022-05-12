@@ -281,11 +281,8 @@ in float releaseTime;
 
 in float note;
 in float velocity;
-in float aftertouch;
 
-#define modulation getControl(1)
 #define pan getControl(10)
-#define pitch getControl(129)
 #define volume getControl(7)
 
 out vec4 fragColor;
@@ -293,11 +290,6 @@ out vec4 fragColor;
 uniform sampler2D controlTexture;
 
 const float pi2 = 6.283185307179586;
-
-float getControl(int x) {
-  // TODO interpolation
-  return texelFetch(controlTexture, ivec2(x,0), 0).x;
-}
 
 #define envReleaseTime getControl(72)
 #define envAttackTime getControl(73)
@@ -313,6 +305,12 @@ const int channelCount = 2; // TODO get for track
 const int streamSampleRate = sampleRate; // TODO get for track
 
 const int samplesPerVec4 = 4 / channelCount;
+
+float getControl(int x) {
+  vec4 controlData = texelFetch(controlTexture, ivec2(x,0), 0);
+  float val = mix(controlData.x, controlData.z, round(pixel_position.x) / float(bufferWidth));
+  return val;
+}
 
 void main(void) {
   int streamVec4Count = (streamBlocks * bufferWidth);
@@ -342,10 +340,12 @@ void main(void) {
   //   sampleVal = vec2(0.0);
   // }
   sampleVal *= 
-    aftertouch *
     volume *
     clamp(time * (1000.0/envAttackTime),0.0,1.0) * // 10ms attack
     (1.0 - clamp((time - releaseTime) * (1000.0/envReleaseTime), 0.0, 1.0)); // 10ms decay
+
+  float p = pan * 2.0;
+  sampleVal *= vec2((2.0 - p), p);
 
   // if ((time<0.0) || (time>releaseTime)) {
   //   sampleVal *= 0.0;
