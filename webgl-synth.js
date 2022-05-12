@@ -156,6 +156,9 @@ class WebGLSynth {
     this.automaticVolume = false;
 
     this.addBackBufferToSampleFBO(); // 20ms< for 1000 times
+
+    this.controlConverters = {};
+    this.controlConverters[7] = 'pow(10.0, 0.8685889638065035 * log(value))';
   }
 
   // This is the thing you fill with notes to play
@@ -194,12 +197,18 @@ class WebGLSynth {
 // ******************************************
 // ****** Shader loading and compiling ******
 // ******************************************
-  getDefaultDefines () { return `
+  getDefaultDefines() {
+    let resultStr = `
 #define bufferHeight ${~~this.bufferHeight}
 #define bufferWidth ${~~this.bufferWidth}
 #define bufferCount ${~~(this.bufferCount / 2)}
 #define sampleRate ${~~this.sampleRate}
-` }
+`;
+    for (let key of Object.keys(this.controlConverters)) {
+      resultStr += '#define convertControl_' + key + ' ' + this.controlConverters[key] + '\n';
+    }
+    return resultStr;
+  }
 
   updateSource(shaderCode) {
     let subShader = '';
