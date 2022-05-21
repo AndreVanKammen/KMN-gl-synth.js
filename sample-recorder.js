@@ -1,4 +1,5 @@
 import AudioInput from "./audio-input.js";
+import { AudioOutputSharedData } from "./audio-worklet-shared.js";
 import { SampleBank, SampleData } from "./sample-bank.js";
 import SynthPlayData, { SynthMixer, SynthNote } from "./webgl-synth-data.js";
 
@@ -29,10 +30,37 @@ export class SampleRecorder extends SampleBank {
   }
 
   endRecording() {
+    let track = this.recordTrack;
     console.log('end recording', this.recordTrackNr, this.recordTrack.sampleLength);
     this.tracks[this.recordTrackNr] = this.recordTrack;
     this.recordTrackNr = -1;
     this.recordTrack = null;
+
+    // Never mind, WebCodec is still not able to do mp3, i think i will just use lamejs
+    // if (track) {
+    //   // @ts-ignore To new for typescript
+    //   let encoder = new AudioEncoder({
+    //     output: (chunk, metaData) => console.log('Chunk:', chunk, metaData),
+    //     error: (e) => console.log('Error: ', e)
+    //   });
+    //   // @ts-ignore To new for typescript
+    //   let data = new AudioData({
+    //     format: 'f32',
+    //     sampleRate: this.playData.synth.sampleRate,
+    //     numberOfFrames: track.leftSamples.length,
+    //     numberOfChannels: 1,
+    //     timestamp: 0,
+    //     data: track.leftSamples
+    //   });
+    //   encoder.configure({
+    //     codec: 'mp3', // Failed to execute 'configure' on 'AudioEncoder': Unsupported codec type. SIGH.. :(
+    //                      And it knows mp3 on others it says unkown
+    //     sampleRate: 44100,
+    //     numberOfChannels: 1
+    //   });
+    //   encoder.encode(data);
+    // }
+
   }
 
   handleRecordAudio(leftSamples, rightSamples) {
