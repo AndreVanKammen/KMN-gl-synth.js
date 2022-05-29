@@ -7,6 +7,7 @@ import SystemShaders from './webgl-synth-shaders.js';
 import SynthPlayData, { ControlHandler, ControlBase, SynthBaseEntry, SynthMixer, SynthNote } from './webgl-synth-data.js';
 import { otherControls } from './otherControls.js';
 import { TrackLineInfo, WebGLMemoryManager } from './webgl-memory-manager.js';
+import { WebGLSynthControls } from './webgl-synth-controls.js';
 
 // https://stackoverflow.com/questions/53562825/glreadpixels-fails-under-webgl2-in-chrome-on-mac
 // Fix needed for Linux Mac & android
@@ -157,6 +158,8 @@ class WebGLSynth {
 
     this.addBackBufferToSampleFBO(); // 20ms< for 1000 times
 
+    this.controls = new WebGLSynthControls();
+    this.controls.createDefaultMidiControls();
     // this.controlConverters = {};
     // this.controlConverters[7] = 'pow(10.0, 0.8685889638065035 * log(value))';
   }
@@ -204,9 +207,6 @@ class WebGLSynth {
 #define bufferCount ${~~(this.bufferCount / 2)}
 #define sampleRate ${~~this.sampleRate}
 `;
-    // for (let key of Object.keys(this.controlConverters)) {
-    //   resultStr += '#define convertControl_' + key + ' ' + this.controlConverters[key] + '\n';
-    // }
     return resultStr;
   }
 
@@ -230,23 +230,35 @@ class WebGLSynth {
          return mainSound(time);
       }`;
     } else {
-      return shaderCode;
+      return this.updateControlsInSource(shaderCode);
     }
-    return SystemShaders.waveform.replace('{WaveformFunction}', subShader);
+    return this.updateControlsInSource(
+      SystemShaders.waveform.replace('{WaveformFunction}', subShader));
   }
 
   updateEffectSource(shaderCode) {
-    let subShader = '';
-    if (shaderCode.indexOf('#include effect')!==-1) {
-      subShader = shaderCode;
-    } else {
-      return shaderCode; 
+    if (shaderCode.indexOf('#include effect') !== -1) {
+      let subShader = shaderCode;
+      if (shaderCode.indexOf('#include effect4') !== -1) {
+        shaderCode = SystemShaders.effect4.replace('{EffectFunction}', subShader);
+      } else {
+        shaderCode = SystemShaders.effect.replace('{EffectFunction}', subShader);
+      }
     }
-    if (shaderCode.indexOf('#include effect4')!==-1) {
-      return SystemShaders.effect4.replace('{EffectFunction}', subShader);
-    } else {
-      return SystemShaders.effect.replace('{EffectFunction}', subShader);
+    return this.updateControlsInSource(shaderCode);
+  }
+
+  /**
+   * 
+   * @param {string} shaderCode 
+   */
+  updateControlsInSource(shaderCode) {
+    let ix = shaderCode.indexOf('#include controls');
+    if (ix !== -1) {
+      let ix2 = shaderCode.indexOf('\n', ix) + 1;
+      return shaderCode.substring(0, ix2) + this.controls.getControlsShaderCode(shaderCode) + shaderCode.substring(ix2);
     }
+    return shaderCode;
   }
 
   /**

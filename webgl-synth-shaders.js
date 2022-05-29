@@ -48,14 +48,7 @@ const float bufferTime = (sampleTime * float(bufferWidth));
 #define synthTime (startTime + (round(pixel_position.x) * sampleTime))
 
 // Some default midi controls
-#define modulation getControl(1)
-#define expression getControl(11)
-#define volume getControl(7)
-#define pan getControl(10)
-#define program getControl(128)
-#define pitch getControl(129)
-#define pitchRange getControl(131)
-#define pressure getControl(130)
+// #include controls
 
 float noise(float phase) {
   return fract(sin(dot(phase,
@@ -211,10 +204,16 @@ void main(void) {
   fragColor = effectMain();
 }
 `,
-"waveform": defaultHeader + /*glsl*/`
+  "waveform": defaultHeader + /*glsl*/`
+struct Envelope {
+  float attack;
+  float decay;
+  float sustain;
+  float release;
+};
+
 // Default attack decay time, can be overwritten in the user functions
-float attackTime = 0.005;
-float decayTime = 0.2;
+Envelope envelope = Envelope(0.005, 0.0, 1.0, 0.2);
 
 vec2 sampleToStereo(vec2 sampleValue) {
   return vec2(
@@ -222,26 +221,28 @@ vec2 sampleToStereo(vec2 sampleValue) {
     sampleValue.y * pan);
 }
 
-vec2 applyLevels(vec2 sampleValue, float attackTime, float decayTime) {
-  // Set an attack ramp of <attackTime>
-  sampleValue *= smoothstep(0.0, attackTime, time);
+float getEnvelopeValue(Envelope env) {
+  float value = 1.0;
+  value *= smoothstep(0.0, env.attack, time);
+  value *= 1.0 - smoothstep(releaseTime, 
+    releaseTime + env.release,
+    time);
+  return value;
+  // env *= clamp(time, 0.0, attack);
+  // env *= clamp(time - releaseTime, 0.0, release);
+}
 
-  // Handle the velocity of the key
+vec2 applyLevels(vec2 sampleValue) {
+    // Handle the velocity of the key
   sampleValue *= velocity;
 
   // Handle the volume of the channel
   sampleValue *= volume * expression;
 
-  // Dampen the sound in <decayTime> after release
-  sampleValue *= 1.0 - smoothstep(releaseTime, 
-                                  releaseTime + decayTime,
-                                  time);
-  return sampleValue;
-}
+  // Handle the envelope
+  sampleValue *= getEnvelopeValue(envelope);
 
-vec2 applyLevels(vec2 sampleValue) {
-  // Use default attack of 5ms and decay of 200ms
-  return applyLevels(sampleValue, attackTime, decayTime);
+  return sampleValue;
 }
 
 // Some basic wave shapes
@@ -282,9 +283,6 @@ in float releaseTime;
 in float note;
 in float velocity;
 
-#define pan getControl(10)
-#define volume getControl(7)
-
 out vec4 fragColor;
 
 uniform sampler2D controlTexture;
@@ -311,6 +309,8 @@ float getControl(int x) {
   float val = mix(controlData.x, controlData.z, round(pixel_position.x) / float(bufferWidth));
   return val;
 }
+
+// #include controls
 
 void main(void) {
   int streamVec4Count = (streamBlocks * bufferWidth);
