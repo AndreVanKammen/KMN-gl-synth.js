@@ -535,10 +535,7 @@ vec4 effectMain(void) {
     float n = round(pixel_position.x) + float(bufferWidth - offset);
   
     float frequencyRatio = pow(2.0, (12.0 - pitchRange * pitch + getControl(133)) / 12.0) / 2.0;
-    if (getControl(21) < 0.5) {
-      frequencyRatio = 1.0;
-    }
-  
+     
     vec2 sampleValue= vec2(0.0);
     for (int ix = 0; ix < bufferWidth; ix++) {
       vec4 fourierValue = getSingleInputSample4(ix - (bufferWidth - offset));
