@@ -24,7 +24,7 @@ export class ControlBase {
     this.controlDefaults[8] = 0.5;
     this.controlDefaults[10] = 0.5;
 
-    this.texInfo = { texture:undefined, size:0 };
+    this.texInfo = { texture:undefined, size:0, bufferWidth: 1024 };
   }
 
   getControlAtTime(synthTime, controlType, defaultValue) {

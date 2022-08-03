@@ -102,7 +102,7 @@ class WebGLSynth {
 
     this.readRmsAvgEngMaxBuffer = new Float32Array(this.lineCount * 4);
    
-    this.volumeInfo = { texture:undefined, size:0 };
+    this.volumeInfo = { texture:undefined, size:0, bufferWidth: 1024 };
 
     this.zeroShader = this.getProgram(SystemShaders.vertex, SystemShaders.zero);
     this.mixDownShader = this.getProgram(SystemShaders.vertex, SystemShaders.mixdown);
@@ -174,8 +174,12 @@ class WebGLSynth {
 
   setOutputCount(outputBuffersCount) {
     this.outputBuffersCount = outputBuffersCount;
+    // TODO Cleanup of buffers and texture
+    // if (this.outputTexture) {
+    //   this.gl.deleteTexture(this.outputTexture
+    // }
     this.outputTexture = this.createSampleTextures(1, outputBuffersCount);
-      // The buffer for reading the output of the videocard
+    // The buffer for reading the output of the videocard
     this.readSampleBuffer = new Float32Array(this.floatWidthGPU * this.outputBuffersCount);
   }
 
