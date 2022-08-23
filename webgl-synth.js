@@ -94,7 +94,7 @@ class WebGLSynth {
     this.inputBackFBO = this.createFBOforTexture(this.inputBackTexture);
     this.outputBackFBO = this.createFBOforTexture(this.outputBackTexture);
 
-    this.audioOutputBuffer = new Float32Array(this.bufferWidth * this.componentCount);
+    this.audioOutputBuffer = new Float32Array(this.bufferWidth * 2);
 
     this.lineCount = this.bufferHeight * this.bufferCount * 2
     this.rmsAvgEngMaxAttributeBuffer = new Float32Array(this.bufferHeight * this.bufferCount * 2 * 4)
@@ -1264,26 +1264,29 @@ class WebGLSynth {
     }
     this.maxLevel = maxLevel;
 
+    let correctiveDelta = 0.0;
     // console.log(maxLevel)
     if (maxLevel > 0.0001) {
       // TODO: setable db levels
       let newValue = Math.min(Math.max((0.9 / maxLevel), 0.2), 5.0);
+      let oldValue = this.correctiveVolume;
       if (newValue < this.correctiveVolume) {
         this.correctiveVolume =
-          0.5 * this.correctiveVolume +
-          0.5 * newValue;
+          0.9 * this.correctiveVolume +
+          0.1 * newValue;
       } else {
         this.correctiveVolume =
           0.99 * this.correctiveVolume +
           0.01 * newValue;
       }
+      correctiveDelta = (oldValue - this.correctiveVolume) / this.floatWidth;
       // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);
     }
 
     if (this.automaticVolume) {
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
-        bufferData[ix] *= this.correctiveVolume;
+        bufferData[ix] *= this.correctiveVolume - correctiveDelta * (this.floatWidth - ix);
         if (Math.abs(bufferData[ix]) > 0.999999) {
           bufferData[ix] = Math.max(-0.999999, Math.min(0.999999, bufferData[ix]));
           // console.log('volume to loud, buffer clamped!');
