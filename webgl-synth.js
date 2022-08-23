@@ -1193,7 +1193,7 @@ class WebGLSynth {
       this.readSampleBuffer
     );
     let stop = performance.now();
-    this.averageRead = (stop-start) * 0.1 + 0.9 * this.averageRead;
+    this.averageRead = (stop - start) * 0.1 + 0.9 * this.averageRead;
     // if ((this.processCount % 60)===0) {
     //   console.log(this.averageRead);
     // }
@@ -1241,7 +1241,7 @@ class WebGLSynth {
 
     let sourceIx = this.floatWidthGPU * 0;
     let destIx = 0;
-    for (let ix = 0; ix < this.floatWidthGPU/(force4Components ? 4.0 : 2.0); ix++) {
+    for (let ix = 0; ix < this.floatWidthGPU / (force4Components ? 4.0 : 2.0); ix++) {
       bufferData[destIx++] = this.readSampleBuffer[sourceIx++];
       bufferData[destIx++] = this.readSampleBuffer[sourceIx++];
       // FIX FOR MAC,LINUX & ANDROID, readpixels only works with 4 values and i only need 2 for stereo :(
@@ -1262,23 +1262,25 @@ class WebGLSynth {
         bufferData[ix] = 0.0;
       }
     }
-    this.maxLevel = maxLevel // * this.correctiveVolume
+    this.maxLevel = maxLevel;
+
+    // console.log(maxLevel)
+    if (maxLevel > 0.0001) {
+      // TODO: setable db levels
+      let newValue = Math.min(Math.max((0.9 / maxLevel), 0.2), 5.0);
+      if (newValue < this.correctiveVolume) {
+        this.correctiveVolume =
+          0.5 * this.correctiveVolume +
+          0.5 * newValue;
+      } else {
+        this.correctiveVolume =
+          0.99 * this.correctiveVolume +
+          0.01 * newValue;
+      }
+      // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);
+    }
 
     if (this.automaticVolume) {
-        // console.log(maxLevel)
-      if (maxLevel > 0.001) {
-        let newValue = Math.min(0.4, (1.0 / maxLevel));
-        if (newValue < this.correctiveVolume) {
-          this.correctiveVolume =
-            0.999 * this.correctiveVolume +
-            0.001 * newValue;
-        } else {
-          this.correctiveVolume =
-            0.99999 * this.correctiveVolume +
-            0.00001 * (newValue * 0.25);
-        }
-      }
-
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
         bufferData[ix] *= this.correctiveVolume;
