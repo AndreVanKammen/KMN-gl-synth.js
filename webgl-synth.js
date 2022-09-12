@@ -1276,8 +1276,8 @@ class WebGLSynth {
           0.1 * newValue;
       } else {
         this.correctiveVolume =
-          0.99 * this.correctiveVolume +
-          0.01 * newValue;
+          0.998 * this.correctiveVolume +
+          0.002 * newValue;
       }
       correctiveDelta = (oldValue - this.correctiveVolume) / this.floatWidth;
       // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);

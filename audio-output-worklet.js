@@ -1,3 +1,4 @@
+import defer, { handleDefers } from "../KMN-utils.js/defer.js";
 import { JustStreamMyBuffers } from "./audio-worklet.js";
 
 let AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -21,6 +22,7 @@ const defaultOptions = {
     this.dataInBuffer = 0;
     this.bufferEmptyCount = 0;
     this.onCalcBuffer = undefined;
+    this.counter = 0;
   }
 
   dispose() {
@@ -41,6 +43,10 @@ const defaultOptions = {
       if (this.onCalcBuffer) {
         this.onCalcBuffer();
       }
+    }
+    this.counter++;
+    if (this.counter % 10 === 0) {
+      handleDefers();
     }
   }
 
