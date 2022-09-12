@@ -45,7 +45,7 @@ const defaultOptions = {
       }
     }
     this.counter++;
-    if (this.counter % 10 === 0) {
+    if (this.counter % 4 === 0) {
       handleDefers();
     }
   }
