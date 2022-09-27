@@ -1172,15 +1172,17 @@ class WebGLSynth {
     }
     //
 
-    if (!this.webGLSync) {
-      if (!sharedData) {
-        bufferData.fill(0);
-      }
-      return bufferData;
-    }
+    // if (!this.webGLSync) {
+    //   if (!sharedData) {
+    //     bufferData.fill(0);
+    //   }
+    //   return bufferData;
+    // }
 
-    gl.clientWaitSync(this.webGLSync, 0, 0);
-    this.webGLSync = null;
+    if (this.webGLSync) {
+      gl.clientWaitSync(this.webGLSync, 0, 0);
+      this.webGLSync = null;
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
     // Thanks for https://stackoverflow.com/questions/45571488/webgl-2-readpixels-on-framebuffers-with-float-textures
     gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
