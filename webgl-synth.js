@@ -1,5 +1,5 @@
 // Copyright by André van Kammen
-// Licensed under CC BY-NC-SA 
+// Licensed under CC BY-NC-SA
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 import getWebGLContext from '../KMN-utils.js/webglutils.js';
@@ -47,14 +47,14 @@ class WebGLSynth {
     this.stopOutput = false;
     this.recordAnalyze = false;
 
-    if ((!this.options.getSynthShaderCode) || 
+    if ((!this.options.getSynthShaderCode) ||
         (!this.options.getEffectShaderCode)) {
       console.error('No shader code getter suplied!')
     }
 
     this.getSynthShaderCode = this.options.getSynthShaderCode;
     this.getEffectShaderCode = this.options.getEffectShaderCode;
-  
+
     if (!this.canvas) {
       if (globalThis.OffscreenCanvas) {
         this.canvas = new globalThis.OffscreenCanvas(this.bufferWidth, this.bufferHeight);
@@ -66,7 +66,7 @@ class WebGLSynth {
     this.canvas.height = this.bufferHeight;
 
     this.averageRead = 1.0;
-    
+
     let gl = (this.gl = getWebGLContext(this.canvas, { alpha: true }));
 
     // const formatIndex = this.componentCount - 1;
@@ -101,7 +101,7 @@ class WebGLSynth {
     this.rmsAvgBuffer = this.createRmsAvgEngMaxTextures(this.lineCount / this.bufferWidth)
 
     this.readRmsAvgEngMaxBuffer = new Float32Array(this.lineCount * 4);
-   
+
     this.volumeInfo = { texture:undefined, size:0, bufferWidth: 1024 };
 
     this.zeroShader = this.getProgram(SystemShaders.vertex, SystemShaders.zero);
@@ -120,7 +120,7 @@ class WebGLSynth {
       alert('need EXT_color_buffer_float');
       return;
     }
-    
+
     this.backBufferTestBuffer = new Float32Array(this.bufferWidth * 1 * 4),
 
     // Did we send the data to the videocard?
@@ -131,7 +131,7 @@ class WebGLSynth {
     this.processCount = 0;
 
     // Attribute buffers for sending to videocard
-    // TODO size is way to big, needs a maxtracks 
+    // TODO size is way to big, needs a maxtracks
     this.attributeLineBuffer  = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
     this.attributeLineBuffer2 = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
     this.attributeLineBuffer3 = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
@@ -219,7 +219,7 @@ class WebGLSynth {
     if (shaderCode.indexOf('#include waveform')!==-1) {
       subShader = shaderCode;
     } else if (shaderCode.indexOf('#include formula')!==-1) {
-      subShader = 
+      subShader =
       `vec2 waveform(float frequency, float phase) {
          return vec2(
            ${shaderCode}
@@ -227,7 +227,7 @@ class WebGLSynth {
       }`;
     } else if (shaderCode.indexOf('#include shadertoy')!==-1) {
       // TODO: lot of clashing variable names, so maybe dedicated shadertoy version?
-      subShader = 
+      subShader =
       `${shaderCode}
 
       vec2 waveform(float frequency, float phase) {
@@ -253,8 +253,8 @@ class WebGLSynth {
   }
 
   /**
-   * 
-   * @param {string} shaderCode 
+   *
+   * @param {string} shaderCode
    */
   updateControlsInSource(shaderCode) {
     let ix = shaderCode.indexOf('#include controls');
@@ -267,24 +267,24 @@ class WebGLSynth {
 
   /**
    * Get program with default defines added
-   * @param {*} vertexSrc 
-   * @param {*} framentSrc 
+   * @param {*} vertexSrc
+   * @param {*} framentSrc
    */
   getProgram(vertexSrc,framentSrc) {
     return this.gl.getShaderProgram(
-      this.getDefaultDefines() + vertexSrc, 
+      this.getDefaultDefines() + vertexSrc,
       this.getDefaultDefines() + framentSrc, 2);
   }
 
   getInputProgram(shaderCode) {
     return this.getProgram(
-      SystemShaders.vertex, 
+      SystemShaders.vertex,
       this.updateSource(shaderCode));
   }
 
   getEffectProgram(shaderCode) {
     return this.getProgram(
-      SystemShaders.vertex, 
+      SystemShaders.vertex,
       this.updateEffectSource(shaderCode));
   }
 
@@ -365,7 +365,7 @@ class WebGLSynth {
     const gl = this.gl;
 
     gl.activeTexture(gl.TEXTURE0);
-    
+
     const fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
@@ -502,7 +502,7 @@ class WebGLSynth {
       buffers.push(buffer);
     }
     return {
-      texture, 
+      texture,
       buffers
     }
   }
@@ -583,9 +583,9 @@ class WebGLSynth {
         } else {
           a1[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
 
-          // Calculation for pitch by timeshift, if we change the frequency in 
+          // Calculation for pitch by timeshift, if we change the frequency in
           // the shader we would need phase corrections, by stretching time
-          // we avoid this because the shader can just repeat it's stateless 
+          // we avoid this because the shader can just repeat it's stateless
           // cycle. All intruments get a working pitchbend this way so it seemed
           // like the best option dispite it being kind off a hack
           // Calculate the frequency ratio of the normal and bend note
@@ -606,7 +606,7 @@ class WebGLSynth {
           //   a1[attrOfs + 2] += correction;
           // }
 
-          // And change the track startTime 
+          // And change the track startTime
           entry.phaseTime += timeShift;
         }
         a1[attrOfs + 7] = entry.releaseTime;
@@ -634,7 +634,7 @@ class WebGLSynth {
           if (!isFinite(a1[attrOfs + jx])) debugger;
           if (!isFinite(a2[attrOfs + jx])) debugger;
         }
-        
+
         attrOfs += 8;
       }
     }
@@ -651,14 +651,14 @@ class WebGLSynth {
         gl.disable(gl.BLEND);
         shader = this.zeroShader;
         gl.useProgram(shader);
-  
+
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.attrBuffer, 4);
-    
+
         gl.drawArrays(gl.LINES, 0, 2); // this.bufferHeight * 2);
-    
+
         shader.a.vertexPosition.dis();
-    
+
         // Let blend mix the racks together
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE);
@@ -679,7 +679,7 @@ class WebGLSynth {
     }
 
     gl.useProgram(shader);
-    
+
     shader.u.startTime?.set(this.synthTime);
     shader.u.processCount?.set(this.processCount);
 
@@ -782,7 +782,7 @@ class WebGLSynth {
 
   // The advantage of a separate output buffer is that it can read from both sample buffers
   // We could change readpixels to just read the mixed down output from the samplebuffer if we mixed down
-  // to one line, but that would not svae a lot. We can als use the output buffer to collect 
+  // to one line, but that would not svae a lot. We can als use the output buffer to collect
   // all output in one place and use it for rmsand frequency info as well
   /** @param {SynthNote[]} tracks */
   mixdownToOutput(tracks) {
@@ -798,9 +798,9 @@ class WebGLSynth {
     }
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    
+
     const a1 = this.attributeLineBuffer;
-    
+
     // Convert track data to attribute data for shader
     let attrOfs = 0;
 
@@ -841,7 +841,7 @@ class WebGLSynth {
 
     gl.drawArrays(gl.LINES, 0, attrOfs / 4);
 
-    shader.a.vertexPosition.dis(); 
+    shader.a.vertexPosition.dis();
   }
 
   /** @param {TrackLineInfo[]} lineInfos */
@@ -856,9 +856,9 @@ class WebGLSynth {
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    
+
     const a1 = this.attributeLineBuffer;
-    
+
     // Convert track data to attribute data for shader
     let attrOfs = 0;
 
@@ -898,7 +898,7 @@ class WebGLSynth {
 
     gl.drawArrays(gl.LINES, 0, attrOfs / 4);
 
-    shader.a.vertexPosition.dis(); 
+    shader.a.vertexPosition.dis();
   }
 
   /** @param {SynthNote[]} tracks */
@@ -913,8 +913,8 @@ class WebGLSynth {
     gl.drawBuffers([
       gl.COLOR_ATTACHMENT0,
       gl.COLOR_ATTACHMENT1
-    ]);    
-    
+    ]);
+
     if (this.recordAnalyze) {
       gl.viewport(0, 0, this.bufferWidth, this.recordAnalyzeHeight);
     } else {
@@ -930,7 +930,7 @@ class WebGLSynth {
     // WebGL2 API is missing the version per buffer :(
     // gl.blendEquationi(0,gl.MAX);
     gl.blendEquationSeparate(gl.FUNC_ADD, gl.MAX);
-    
+
     const a1 = this.rmsAvgEngMaxAttributeBuffer;
     // Convert track data to attribute data for shader
     let attrOfs = 0;
@@ -999,9 +999,9 @@ class WebGLSynth {
     let start = performance.now();
     let maxPassNr = 0;
     let currentEntries = this.playData.getCurrentEntries(this.synthTime, this.bufferTime);
-    // Make sure all the buffers are allocated and get the right pass number 
+    // Make sure all the buffers are allocated and get the right pass number
     // and get the number of passes we need
-    // CaVEATS: 
+    // CaVEATS:
     // If one note entry uses more effects but ends in the same mixer, it would give problems in
     // the odd/even sceme for mixdown because we use this to swap target and source on each pass
     // But since i'm building it with pre and post mixers and after that possible channel mixer
@@ -1117,7 +1117,7 @@ class WebGLSynth {
     if (outputInfos.length > 0) {
       this.copyDataToOutput(outputInfos);
     }
-      
+
     shaderPasses += 2;
     shaderLines += calculatedTracks.length * 2;
     let stop = performance.now();
@@ -1149,7 +1149,7 @@ class WebGLSynth {
       return true;
     }
     this.gl.finish();
-    let state = this.gl.clientWaitSync(this.webGLSync, 0, 0); // THis errprs with more then max STUPID ERROR this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
+    let state = this.gl.clientWaitSync(this.webGLSync, 0, 0); // THis errprs with more then 0 STUPID ERROR this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
     // let state = this.gl.clientWaitSync(this.webGLSync, 0, this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
     // console.log('state: ', state);
     // 37146 ALREADY ALREADY_SIGNALED
@@ -1157,7 +1157,10 @@ class WebGLSynth {
     // 37148 CONDITION_SATISFIED
     // 37149 WAIT_FAILED
 
-    return state === this.gl.CONDITION_SATISFIED;
+    return (state !== this.gl.TIMEOUT_EXPIRED);
+
+    // return (state === this.gl.CONDITION_SATISFIED) ||
+    //    (state === this.gl.ALREADY_SIGNALED);
   }
 
   getCalculatedSamples(sharedData) {
@@ -1167,7 +1170,7 @@ class WebGLSynth {
     if (sharedData) {
       bufferData = sharedData.getNextBlockView();
     }
-    // 
+    //
 
     if (!this.webGLSync) {
       if (!sharedData) {
@@ -1175,7 +1178,7 @@ class WebGLSynth {
       }
       return bufferData;
     }
-    
+
     gl.clientWaitSync(this.webGLSync, 0, 0);
     this.webGLSync = null;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
