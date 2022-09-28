@@ -1,6 +1,9 @@
 // Copyright by André van Kammen
-// Licensed under CC BY-NC-SA 
+// Licensed under CC BY-NC-SA
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+const needs_flat = 'flat '; // ints and ivec needs to be flat, but flat causes performance issues for WebGL over metal
+const flat = ''; // needs_flat Apparantly no optional flats here
 
 // The shader that calculates the pixel values for the filled triangles
 const defaultHeader = /*glsl*/`precision highp float;
@@ -18,7 +21,7 @@ in float velocity;
 in float releaseVelocity;
 in float aftertouch;
 
-flat in ivec3 trackLineInfo;
+${needs_flat}in ivec3 trackLineInfo;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -71,7 +74,7 @@ vec4 getSingleInputSample4(int sampleNr) {
   return
     texelFetch(sampleTextures,
                ivec3(int(floor(fract(sampleX) * float(bufferWidth))),
-                     inputLine % bufferHeight, 
+                     inputLine % bufferHeight,
                      inputLine / bufferHeight),0);
 }
 
@@ -92,7 +95,7 @@ vec4 getSingleInputSample4(float deltaTime) {
   return
     texelFetch(sampleTextures,
                ivec3(int(floor(fract(sampleX) * float(bufferWidth))),
-                     inputLine % bufferHeight, 
+                     inputLine % bufferHeight,
                      inputLine / bufferHeight),0);
 }
 
@@ -138,8 +141,8 @@ out float note; // Note number in MIDI 0-127
 out float velocity; // Velocity 0.0 - 1.0
 out float releaseVelocity;
 out float aftertouch; // Aftertouch 0.0 - 1.0
-flat out ivec3 trackLineInfo; // Input line info from sampleBuffer
-flat out int backBufferIx;
+${needs_flat}out ivec3 trackLineInfo; // Input line info from sampleBuffer
+${needs_flat}out int backBufferIx;
 
 const float offsetCorrection = 0.5 / float(bufferWidth) * float(bufferWidth-1);
 
@@ -150,7 +153,7 @@ void main(void) {
 
   time            = vertexPosition.x;
   phaseTime       = vertexPosition.z;
-  releaseTime     = vertexPosition.w; 
+  releaseTime     = vertexPosition.w;
 
   note            = attributes2.x;
   velocity        = attributes2.y;
@@ -174,16 +177,16 @@ precision highp sampler2DArray;
 
 in vec2 pixel_position;
 
-flat in ivec3 trackLineInfo;
+${needs_flat}in ivec3 trackLineInfo;
 uniform sampler2DArray sampleTextures;
 
 layout(location = 0) out vec4 fragColor;
 
 void main(void) {
-  vec4 sampleValue = 
+  vec4 sampleValue =
                     texelFetch(sampleTextures,
                                ivec3(round(pixel_position.x),
-                                     trackLineInfo.z % bufferHeight, 
+                                     trackLineInfo.z % bufferHeight,
                                      trackLineInfo.z / bufferHeight),0);
   fragColor = sampleValue;
 }
@@ -224,7 +227,7 @@ vec2 sampleToStereo(vec2 sampleValue) {
 float getEnvelopeValue(Envelope env) {
   float value = 1.0;
   value *= smoothstep(0.0, env.attack, time);
-  value *= 1.0 - smoothstep(releaseTime, 
+  value *= 1.0 - smoothstep(releaseTime,
     releaseTime + env.release,
     time);
   return value;
@@ -274,7 +277,7 @@ playInput: /*glsl*/`// #synth-note-mode: exclusive // don't start the same not t
 precision highp float;
 precision highp sampler2D;
 
-flat in int backBufferIx;
+${needs_flat}in int backBufferIx;
 
 in float phaseTime; // PHASE ACCURATE ENOUGH?
 in float time; // TIME ACCURATE ENOUGH?
@@ -315,7 +318,7 @@ float getControl(int x) {
 void main(void) {
   int streamVec4Count = (streamBlocks * bufferWidth);
   int streamSampleCount = streamVec4Count * samplesPerVec4;
-  
+
   // int trackOffset = int(note) * trackSize;
   // int sampleNr = int(floor(time * float(sampleRate))) % trackSize;
   // int fragNr = (trackOffset + sampleNr) / channelCount;
@@ -325,11 +328,11 @@ void main(void) {
     return;
   }
 
-  int fragNr = 
+  int fragNr =
     int(floor(note)) * streamVec4Count + // buffer start
     (sampleNr / samplesPerVec4) % streamVec4Count;
 
-  vec4 fragVal = texelFetch( inputTexture, 
+  vec4 fragVal = texelFetch( inputTexture,
                              ivec2( fragNr % bufferWidth,
                                     fragNr / bufferWidth),0);
 
@@ -339,7 +342,7 @@ void main(void) {
   // if (time>=releaseTime) {
   //   sampleVal = vec2(0.0);
   // }
-  sampleVal *= 
+  sampleVal *=
     volume *
     clamp(time * (1000.0/envAttackTime),0.0,1.0) * // 10ms attack
     (1.0 - clamp((time - releaseTime) * (1000.0/envReleaseTime), 0.0, 1.0)); // 10ms decay
@@ -352,7 +355,7 @@ void main(void) {
   // }
     // sampleVal *= vec2(pan, 1.0 - pan);
   // sampleVal += sin(float(sampleNr)/100.0*pi2);
-  
+
   // Return the sound to the videocard buffer at half volume
   fragColor = vec4(clamp(sampleVal,-1.0,1.0), 0.0, 1.0);
 }
@@ -364,12 +367,12 @@ precision highp sampler2DArray;
 in vec4 vertexPosition;
 
 out float lineX;
-flat out ivec3 trackLineInfo;
+${needs_flat}out ivec3 trackLineInfo;
 
 const float offsetCorrection = 0.5 / float(bufferWidth) * float(bufferWidth-1);
 void main(void) {
   lineX = floor((vertexPosition.x + 1.0) * 0.5 * (float(bufferWidth) - 0.5));
-  
+
   if (vertexPosition.x > 0.1) {
     lineX = float(bufferWidth) - offsetCorrection;
   } else {
@@ -379,7 +382,7 @@ void main(void) {
   trackLineInfo.x = currentLine / bufferHeight;
   trackLineInfo.y = currentLine % bufferHeight;
   trackLineInfo.z = int(floor(vertexPosition.w));
-  
+
   gl_Position = vec4(vertexPosition.x, vertexPosition.y, 0.0, 1.0);
 }`,
 copyLine: /*glsl*/`precision highp float;
@@ -387,7 +390,7 @@ precision highp int;
 precision highp sampler2DArray;
 
 in float lineX;
-flat in ivec3 trackLineInfo;
+${needs_flat}in ivec3 trackLineInfo;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -400,12 +403,12 @@ void main(void) {
   vec4 sampleValue;
   if (trackLineInfo.z == 0) {
     sampleValue = texelFetch(sampleTextures0,
-        ivec3(round(lineX), 
+        ivec3(round(lineX),
               currentLine,
               currentBuffer), 0);
   } else {
     sampleValue = texelFetch(sampleTextures1,
-        ivec3(round(lineX), 
+        ivec3(round(lineX),
               currentLine,
               currentBuffer), 0);
   }
@@ -418,24 +421,24 @@ precision highp sampler2DArray;
 
 uniform sampler2D tliDataTexture;
 
-flat out int currentBuffer;
-flat out int currentLine;
-flat out int texNr;
-flat out int lineX;
-flat out int stepSize;
+${needs_flat}out int currentBuffer;
+${needs_flat}out int currentLine;
+${needs_flat}out int texNr;
+${needs_flat}out int lineX;
+${needs_flat}out int stepSize;
 
 void main(void) {
-  int vertexIx = gl_VertexID; 
+  int vertexIx = gl_VertexID;
   int tliIx = vertexIx / bufferWidth;
   lineX = (vertexIx % bufferWidth);
 
   vec4 tliData = texelFetch(tliDataTexture, ivec2(tliIx % bufferWidth, tliIx / bufferWidth), 0);
   texNr = int(tliData.x) % 2;
-  
+
   int lineIx = int(tliData.y);
   currentLine = lineIx % bufferHeight;
   currentBuffer = lineIx / bufferHeight;
-  
+
   int divider = int(tliData.w);
   stepSize = (bufferWidth / divider);
 
@@ -445,7 +448,7 @@ void main(void) {
   // Calculate position in volume buffer
   float outputX = -1.0 + 2.0 * (float(bufferIx % bufferWidth) + 0.5) / float(bufferWidth);
   float outputY = -1.0 + 2.0 * (float(bufferIx / bufferWidth) + 0.5) / float(bufferHeight);
-  
+
   gl_PointSize = 1.0;
   gl_Position = vec4(outputX, outputY, 1.0, 1.0);
 }`,
@@ -457,11 +460,11 @@ precision highp sampler2DArray;
 uniform sampler2DArray sampleTextures0;
 uniform sampler2DArray sampleTextures1;
 
-flat in int currentBuffer;
-flat in int currentLine;
-flat in int texNr;
-flat in int lineX;
-flat in int stepSize;
+${needs_flat}in int currentBuffer;
+${needs_flat}in int currentLine;
+${needs_flat}in int texNr;
+${needs_flat}in int lineX;
+${needs_flat}in int stepSize;
 
 layout(location = 0) out vec4 outColor0;
 layout(location = 1) out vec4 outColor1;
@@ -471,20 +474,20 @@ void main(void) {
   vec2 sampleValuePrev;
   if (texNr == 0) {
     sampleValuePrev = texelFetch(sampleTextures0,
-      ivec3( max(lineX-1,0), 
+      ivec3( max(lineX-1,0),
              currentLine,
              currentBuffer), 0).rg;
     sampleValue = texelFetch(sampleTextures0,
-      ivec3( lineX, 
+      ivec3( lineX,
              currentLine,
              currentBuffer), 0).rg;
   } else {
     sampleValuePrev = texelFetch(sampleTextures1,
-      ivec3( max(lineX-1,0), 
+      ivec3( max(lineX-1,0),
              currentLine,
              currentBuffer), 0).rg;
     sampleValue = texelFetch(sampleTextures1,
-      ivec3( lineX, 
+      ivec3( lineX,
              currentLine,
              currentBuffer), 0).rg;
   }
@@ -502,7 +505,7 @@ void main(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-flat in int backBufferIx;
+${needs_flat}in int backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 
@@ -510,7 +513,7 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
-  
+
   float n = round(pixel_position.x);
 
   vec4 tracer = vec4(0.0);
@@ -523,7 +526,7 @@ vec4 effectMain(void) {
     // sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
-    tracer += vec4( v * sampleValue.x, 
+    tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);
   }
   return tracer / float(bufW2);
@@ -533,29 +536,29 @@ vec4 effectMain(void) {
 
   vec4 fourierMain(int offset) {
     float n = round(pixel_position.x) + float(bufferWidth - offset);
-  
+
     float frequencyRatio = pow(2.0, (12.0 - pitchRange * pitch + getControl(133)) / 12.0) / 2.0;
-     
+
     vec2 sampleValue= vec2(0.0);
     for (int ix = 0; ix < bufferWidth; ix++) {
       vec4 fourierValue = getSingleInputSample4(ix - (bufferWidth - offset));
       float progress = (n / float(bufferWidth*2));
       float phase = (float(ix))//+round(10.0+pitch*10.0))
-                    * pi2 
+                    * pi2
                     * progress * frequencyRatio;
-  
+
       vec2 v = vec2(cos(phase),sin(phase)) * (0.5 - 0.5 * cos(progress * pi2));
       sampleValue += fourierValue.xz * v.x- fourierValue.yw * v.y;
     }
-  
+
     return vec4(sampleValue ,0.0,1.0);
   }
-  
+
   vec4 effectMain(void) {
     if (time<0.0) {
       return vec4(0.0);
     }
-    return 
+    return
       fourierMain(0) +
       fourierMain(bufferWidth);
   }
@@ -565,7 +568,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-flat in int backBufferIx;
+${needs_flat}in int backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 const float lowestFreq = float(sampleRate) / float(bufW2);
@@ -574,7 +577,7 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
-  
+
   float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
   float f = 8.175798915643707 * pow(2.0, note / 12.0);
   float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
@@ -590,7 +593,7 @@ vec4 effectMain(void) {
     sampleValue *= (0.5 - 0.5 * cos(progress * pi2));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
-    tracer += vec4( v * sampleValue.x, 
+    tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);//  * (f2-f)*0.01;
   }
   return tracer / float(bufW2);
@@ -601,7 +604,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-flat in int backBufferIx;
+${needs_flat}in int backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 const float lowestFreq = float(sampleRate) / float(bufW2);
@@ -610,7 +613,7 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
-  
+
   float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
   float f = 8.175798915643707 * pow(2.0, note / 12.0);
   float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
@@ -628,15 +631,15 @@ vec4 effectMain(void) {
     float phase = pi2 * cycle;
     vec2 v = vec2(cos(-phase),sin(-phase));
 
-    vec4 ft = vec4( v * sampleValue.x, 
+    vec4 ft = vec4( v * sampleValue.x,
                     v * sampleValue.y);//  * (f2-f)*0.01;
     tracer += ft * (0.5 - 0.5 * cos(progress * pi2));
     tracerCenter += ft * (1.0 - step(0.2,abs(progress-0.5))) * (0.5 - 0.5 * cos((progress * 2.5 - 0.75) * pi2));
   }
   tracer /= float(sampleWidth);
   tracerCenter /= float(sampleWidth) / 2.5;
-  vec4 normalized = vec4(normalize(tracer.xy), normalize(tracer.zw)); 
-  vec2 minLen = vec2(min(length(tracerCenter.xy),length(tracer.xy)), 
+  vec4 normalized = vec4(normalize(tracer.xy), normalize(tracer.zw));
+  vec2 minLen = vec2(min(length(tracerCenter.xy),length(tracer.xy)),
                      min(length(tracerCenter.zw),length(tracer.zw)));
   return vec4(normalized.xy * minLen.x, normalized.zw * minLen.y);
 }
@@ -646,7 +649,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-flat in int backBufferIx;
+${needs_flat}in int backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 
@@ -654,7 +657,7 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
-  
+
   float binsPerNote = float(bufferWidth) / 128.0;
   float note = round(pixel_position.x) / float(bufferWidth) * 128.0;
   float f = 8.175798915643707 * pow(2.0, note / 12.0);
@@ -663,7 +666,7 @@ vec4 effectMain(void) {
   // if (mod(float(trackLineInfo.z),2.0)<0.99) {
   //   history = 1.0 - history;
   // }
-  
+
   float history = fract(note * 2.0+ 1.5);
   int extraOffset = int(floor(history * float(bufferWidth)));
 
@@ -677,7 +680,7 @@ vec4 effectMain(void) {
   // extraOffset += int(round((float(bufW2) - sWidth)) * 0.5);
 
   int sampleWidth = bufW2; // int(round(float(bufW2) / binsPerNote));
-  
+
   float lowestFreq = float(sampleRate) / float(sampleWidth);
   float n = f / lowestFreq;
 
@@ -692,7 +695,7 @@ vec4 effectMain(void) {
     // sampleValue *= 1.0-smoothstep(sWidth,sWidth+samplesPerCycle,abs(progress-0.5));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
-    tracer += vec4( v * sampleValue.x, 
+    tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);
   }
   // return tracer / float(bufW2 ) / (sWidth+ 0.5 * samplesPerCycle) / 2.0;
@@ -716,7 +719,7 @@ vec4 fourierMain(int offset) {
     float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
       // float n = ;
     float phase = (float(f / lowestFreq))//+round(10.0+pitch*10.0))
-                  * pi2 
+                  * pi2
                   * progress;
 
     vec2 v = vec2(cos(phase),sin(phase));// * (0.5 - 0.5 * cos(progress * pi2));
@@ -730,7 +733,7 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
-  return 
+  return
     fourierMain(0) +
     fourierMain(bufferWidth);
 }

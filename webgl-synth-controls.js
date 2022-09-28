@@ -1,9 +1,9 @@
 class ControlRecord {
   /**
-   * 
+   *
    * @param {string} name The name of the variable for use in the shaderCode, will be the name of a define which does the call or a const set
    * @param {string} converterName The name of a GLSL converter function, this could also be an envelope generator
-   * @param {number[]} converterParams array of float eg. -70, 6 for dBtoLinear 
+   * @param {number[]} converterParams array of float eg. -70, 6 for dBtoLinear
    */
   constructor(name, converterName, converterParams) {
     this.name = name;
@@ -13,9 +13,9 @@ class ControlRecord {
 }
 class ConverterRecord {
   /**
-   * 
-   * @param {string} name 
-   * @param {string} code 
+   *
+   * @param {string} name
+   * @param {string} code
    */
   constructor(name, code) {
     this.name = name;
@@ -32,7 +32,7 @@ export class WebGLSynthControls {
   }
 
   /**
-   * 
+   *
    * @param {string} name functions name
    * @param {string} code GLSL function code for converting params to a value can use getControl
    */
@@ -41,10 +41,10 @@ export class WebGLSynthControls {
   }
 
   /**
-   * 
+   *
    * @param {string} name The name of the variable for use in the shaderCode, will be the name of a define which does the call or a const set
    * @param {string} converterName The name of a GLSL converter function, this could also be an envelope generator
-   * @param {number[]} converterParams array of float eg. -70, 6 for dBtoLinear 
+   * @param {number[]} converterParams array of float eg. -70, 6 for dBtoLinear
    */
   setControl(name, converterName, converterParams) {
     this.controls[name] = new ControlRecord(name, converterName, converterParams);
@@ -71,8 +71,8 @@ export class WebGLSynthControls {
       let cr = this.controls[name];
       resultStr += `#define ${name} ${cr.converterName}(${cr.converterParams.join(',')})\n`;
     }
-    console.log('getControlsShaderCode:', resultStr);
+    // console.log('getControlsShaderCode:', resultStr);
     return resultStr;
   }
-    
+
 }
