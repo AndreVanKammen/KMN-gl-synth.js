@@ -1,5 +1,5 @@
 // Copyright by André van Kammen
-// Licensed under CC BY-NC-SA 
+// Licensed under CC BY-NC-SA
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 import WebGLSynth from './webgl-synth.js';
@@ -85,7 +85,7 @@ class SynthController {
     }
     this.isInitialized = false;
   }
-  
+
   handleNewBuffer() {
   }
 
@@ -174,7 +174,7 @@ class SynthController {
   // /**
   //  * Set's the track for us by the playinput shader
   //  * TODO rename playinput to plattrack
-  //  * @param {IAudioTracks} audioTracks 
+  //  * @param {IAudioTracks} audioTracks
   //  */
   // setAudioStreams(audioTracks) {
   //   this.ensureStarted();
@@ -190,8 +190,8 @@ class SynthController {
   //     let sNr = startSampleNr;
   //     let audioTrack = audioTracks.tracks[trackNr % audioTracks.tracks.length];
   //     let bufStart = streamNr * streamFloatSize;
-  //     let l = audioTrack.leftSamples || emptyArray; 
-  //     let r = audioTrack.rightSamples || emptyArray; 
+  //     let l = audioTrack.leftSamples || emptyArray;
+  //     let r = audioTrack.rightSamples || emptyArray;
   //     // if ((this.divider++ & 0x180) === 0x180) {
   //     //   console.log('get sample: ',streamNr, ofs, ofs % trackSize2,startSampleNr,count);
   //     // }
@@ -215,7 +215,6 @@ class SynthController {
   handleAudioDataRequest() {
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer + this.webGLSynth.bufferWidth) {
       // console.log('.', this.audioOutput.dataInBuffer);
-      let start = globalThis.performance.now();
       // this.audioOutput.postBuffer(spoofBuffer)
       if (this.webGLSynth.samplesCalculated) {
         if (!this.webGLSynth.checkSamplesReady()) {
@@ -236,20 +235,20 @@ class SynthController {
           }
         }
       } else {
+        let start = globalThis.performance.now();
         this.webGLSynth.calculateSamples();
-        
+        let stop = globalThis.performance.now();
+        this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
+
         // this.startTime += this.webGLSynth.bufferWidth / this.sampleRate;
       }
-      let stop = globalThis.performance.now();
-
-      this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
       // console.log('this.calcTimeAvg', this.calcTimeAvg.toFixed(2));
     }
-       
+
     let newOutputTimeDiff =
       (this.webGLSynth.synthTime - (this.audioOutput.dataInBuffer / this.channelCount) / this.sampleRate) -
       this.audioOutput.getContextTime();// audioCtx.getOutputTimestamp().contextTime;
-    
+
     if (Math.abs(this.synthOutputTimeDiff - newOutputTimeDiff) > 0.5) {
       // console.log('resync time',
       //   this.synthOutputTimeDiff - newOutputTimeDiff,
@@ -306,7 +305,7 @@ class SynthController {
 
       // Sync audio parameters between components
       this.sampleRate   = this.options.webgl.sampleRate   = this.audioOutput.sampleRate;
-      this.channelCount = this.options.webgl.channelCount = this.audioOutput.channelCount;  
+      this.channelCount = this.options.webgl.channelCount = this.audioOutput.channelCount;
 
       this.webGLSynth = new WebGLSynth({
         ...this.options.webgl,

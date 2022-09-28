@@ -2,8 +2,13 @@
 // Licensed under CC BY-NC-SA
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-const needs_flat = 'flat '; // ints and ivec needs to be flat, but flat causes performance issues for WebGL over metal
-const flat = ''; // needs_flat Apparantly no optional flats here
+// const needs_flat = 'flat '; // ints and ivec needs to be flat, but flat causes performance issues for WebGL over metal
+// const ivec3 = 'ivec3';
+// const int = 'int';
+
+const needs_flat = ''; // ints and ivec needs to be flat, but flat causes performance issues for WebGL over metal
+const ivec3 = 'vec3';
+const int = 'float';
 
 // The shader that calculates the pixel values for the filled triangles
 const defaultHeader = /*glsl*/`precision highp float;
@@ -21,7 +26,7 @@ in float velocity;
 in float releaseVelocity;
 in float aftertouch;
 
-${needs_flat}in ivec3 trackLineInfo;
+${needs_flat}in ${ivec3} trackLineInfo;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -63,9 +68,9 @@ vec4 getSingleInputSample4(int sampleNr) {
   float sampleX = float(sampleNr) / float(bufferWidth);
 
   int inputLine = int(floor(float(trackLineInfo.z) + sampleX));
-  if (inputLine < trackLineInfo.x) {
-    int diff = inputLine - trackLineInfo.x;
-    inputLine = trackLineInfo.x + trackLineInfo.y + diff;
+  if (inputLine < int(trackLineInfo.x)) {
+    int diff = inputLine - int(trackLineInfo.x);
+    inputLine = int(trackLineInfo.x) + int(trackLineInfo.y) + diff;
   }
 
   // Interpolation can not work here because of buffer borders, this gives clicking sounds
@@ -84,9 +89,9 @@ vec4 getSingleInputSample4(float deltaTime) {
   sampleX += bufferDeltaX;
 
   int inputLine = int(floor(float(trackLineInfo.z) + sampleX));
-  if (inputLine < trackLineInfo.x) {
-    int diff = inputLine - trackLineInfo.x;
-    inputLine = trackLineInfo.x + trackLineInfo.y + diff;
+  if (inputLine < int(trackLineInfo.x)) {
+    int diff = inputLine - int(trackLineInfo.x);
+    inputLine = int(trackLineInfo.x) + int(trackLineInfo.y) + diff;
   }
 
   // Interpolation can not work here because of buffer borders, this gives clicking sounds
@@ -141,8 +146,8 @@ out float note; // Note number in MIDI 0-127
 out float velocity; // Velocity 0.0 - 1.0
 out float releaseVelocity;
 out float aftertouch; // Aftertouch 0.0 - 1.0
-${needs_flat}out ivec3 trackLineInfo; // Input line info from sampleBuffer
-${needs_flat}out int backBufferIx;
+${needs_flat}out ${ivec3} trackLineInfo; // Input line info from sampleBuffer
+${needs_flat}out ${int} backBufferIx;
 
 const float offsetCorrection = 0.5 / float(bufferWidth) * float(bufferWidth-1);
 
@@ -160,9 +165,9 @@ void main(void) {
   releaseVelocity = attributes2.z;
   aftertouch      = attributes2.w;
 
-  trackLineInfo = ivec3(floor(attributes3.xyz));
+  trackLineInfo = ${ivec3}(floor(attributes3.xyz));
 
-  backBufferIx = int(floor(attributes3.w));
+  backBufferIx = ${int}(floor(attributes3.w));
 
   gl_Position = vec4(-1.0+2.0*float(gl_VertexID % 2), vertexPosition.y, 0.0, 1.0);
 }`,
@@ -177,7 +182,7 @@ precision highp sampler2DArray;
 
 in vec2 pixel_position;
 
-${needs_flat}in ivec3 trackLineInfo;
+${needs_flat}in ${ivec3} trackLineInfo;
 uniform sampler2DArray sampleTextures;
 
 layout(location = 0) out vec4 fragColor;
@@ -186,8 +191,8 @@ void main(void) {
   vec4 sampleValue =
                     texelFetch(sampleTextures,
                                ivec3(round(pixel_position.x),
-                                     trackLineInfo.z % bufferHeight,
-                                     trackLineInfo.z / bufferHeight),0);
+                                     int(trackLineInfo.z) % bufferHeight,
+                                     int(trackLineInfo.z) / bufferHeight),0);
   fragColor = sampleValue;
 }
 `,
@@ -277,7 +282,7 @@ playInput: /*glsl*/`// #synth-note-mode: exclusive // don't start the same not t
 precision highp float;
 precision highp sampler2D;
 
-${needs_flat}in int backBufferIx;
+${needs_flat}in ${int} backBufferIx;
 
 in float phaseTime; // PHASE ACCURATE ENOUGH?
 in float time; // TIME ACCURATE ENOUGH?
@@ -367,7 +372,7 @@ precision highp sampler2DArray;
 in vec4 vertexPosition;
 
 out float lineX;
-${needs_flat}out ivec3 trackLineInfo;
+${needs_flat}out ${ivec3} trackLineInfo;
 
 const float offsetCorrection = 0.5 / float(bufferWidth) * float(bufferWidth-1);
 void main(void) {
@@ -379,9 +384,9 @@ void main(void) {
     lineX = -offsetCorrection;
   }
   int currentLine = int(floor(vertexPosition.z));
-  trackLineInfo.x = currentLine / bufferHeight;
-  trackLineInfo.y = currentLine % bufferHeight;
-  trackLineInfo.z = int(floor(vertexPosition.w));
+  trackLineInfo.xyz = ${ivec3}(currentLine / bufferHeight,
+                               currentLine % bufferHeight,
+                               floor(vertexPosition.w));
 
   gl_Position = vec4(vertexPosition.x, vertexPosition.y, 0.0, 1.0);
 }`,
@@ -390,7 +395,7 @@ precision highp int;
 precision highp sampler2DArray;
 
 in float lineX;
-${needs_flat}in ivec3 trackLineInfo;
+${needs_flat}in ${ivec3} trackLineInfo;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -398,10 +403,10 @@ uniform sampler2DArray sampleTextures0;
 uniform sampler2DArray sampleTextures1;
 
 void main(void) {
-  int currentBuffer = trackLineInfo.x;
-  int currentLine = trackLineInfo.y;
+  int currentBuffer = int(trackLineInfo.x);
+  int currentLine = int(trackLineInfo.y);
   vec4 sampleValue;
-  if (trackLineInfo.z == 0) {
+  if (int(trackLineInfo.z) == 0) {
     sampleValue = texelFetch(sampleTextures0,
         ivec3(round(lineX),
               currentLine,
@@ -421,28 +426,28 @@ precision highp sampler2DArray;
 
 uniform sampler2D tliDataTexture;
 
-${needs_flat}out int currentBuffer;
-${needs_flat}out int currentLine;
-${needs_flat}out int texNr;
-${needs_flat}out int lineX;
-${needs_flat}out int stepSize;
+${needs_flat}out ${int} currentBuffer;
+${needs_flat}out ${int} currentLine;
+${needs_flat}out ${int} texNr;
+${needs_flat}out ${int} lineX;
+${needs_flat}out ${int} stepSize;
 
 void main(void) {
   int vertexIx = gl_VertexID;
   int tliIx = vertexIx / bufferWidth;
-  lineX = (vertexIx % bufferWidth);
+  lineX = ${int}(vertexIx % bufferWidth);
 
   vec4 tliData = texelFetch(tliDataTexture, ivec2(tliIx % bufferWidth, tliIx / bufferWidth), 0);
-  texNr = int(tliData.x) % 2;
+  texNr = ${int}(int(tliData.x) % 2);
 
   int lineIx = int(tliData.y);
-  currentLine = lineIx % bufferHeight;
-  currentBuffer = lineIx / bufferHeight;
+  currentLine = ${int}(lineIx % bufferHeight);
+  currentBuffer = ${int}(lineIx / bufferHeight);
 
   int divider = int(tliData.w);
-  stepSize = (bufferWidth / divider);
+  stepSize = ${int}(bufferWidth / divider);
 
-  int bufferIx = int(tliData.z) + lineX / stepSize;
+  int bufferIx = int(tliData.z) + int(lineX) / int(stepSize);
   // int bufferIx = lineIx + texNr * bufferHeight * bufferCount;
 
   // Calculate position in volume buffer
@@ -460,11 +465,11 @@ precision highp sampler2DArray;
 uniform sampler2DArray sampleTextures0;
 uniform sampler2DArray sampleTextures1;
 
-${needs_flat}in int currentBuffer;
-${needs_flat}in int currentLine;
-${needs_flat}in int texNr;
-${needs_flat}in int lineX;
-${needs_flat}in int stepSize;
+${needs_flat}in ${int} currentBuffer;
+${needs_flat}in ${int} currentLine;
+${needs_flat}in ${int} texNr;
+${needs_flat}in ${int} lineX;
+${needs_flat}in ${int} stepSize;
 
 layout(location = 0) out vec4 outColor0;
 layout(location = 1) out vec4 outColor1;
@@ -472,9 +477,9 @@ layout(location = 1) out vec4 outColor1;
 void main(void) {
   vec2 sampleValue;
   vec2 sampleValuePrev;
-  if (texNr == 0) {
+  if (int(texNr) == 0) {
     sampleValuePrev = texelFetch(sampleTextures0,
-      ivec3( max(lineX-1,0),
+      ivec3( max(int(lineX)-1,0),
              currentLine,
              currentBuffer), 0).rg;
     sampleValue = texelFetch(sampleTextures0,
@@ -483,7 +488,7 @@ void main(void) {
              currentBuffer), 0).rg;
   } else {
     sampleValuePrev = texelFetch(sampleTextures1,
-      ivec3( max(lineX-1,0),
+      ivec3( max(int(lineX)-1,0),
              currentLine,
              currentBuffer), 0).rg;
     sampleValue = texelFetch(sampleTextures1,
@@ -505,7 +510,7 @@ void main(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-${needs_flat}in int backBufferIx;
+${needs_flat}in ${int} backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 
@@ -568,7 +573,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-${needs_flat}in int backBufferIx;
+${needs_flat}in ${int} backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 const float lowestFreq = float(sampleRate) / float(bufW2);
@@ -604,7 +609,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-${needs_flat}in int backBufferIx;
+${needs_flat}in ${int} backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 const float lowestFreq = float(sampleRate) / float(bufW2);
@@ -618,7 +623,7 @@ vec4 effectMain(void) {
   float f = 8.175798915643707 * pow(2.0, note / 12.0);
   float f2 = 8.175798915643707 * pow(2.0, (note+1.0) / 12.0);
   float n = f / lowestFreq;
-  int extraOffset = bufferWidth / 8 * (7 + backBufferIx);
+  int extraOffset = bufferWidth / 8 * (7 + int(backBufferIx));
 
   vec4 tracer = vec4(0.0);
   vec4 tracerCenter = vec4(0.0);
@@ -649,7 +654,7 @@ vec4 effectMain(void) {
 uniform sampler2D backBufferIn;
 uniform int processCount;
 
-${needs_flat}in int backBufferIx;
+${needs_flat}in ${int} backBufferIx;
 
 const int bufW2 = bufferWidth * 2;
 

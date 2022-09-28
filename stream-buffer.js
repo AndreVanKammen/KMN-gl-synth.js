@@ -5,11 +5,11 @@ export const emptyFloat64Array = new Float32Array();
 
 export class StreamBuffer {
   /**
-   * 
-   * @param {WebGLSynth} synth 
+   *
+   * @param {WebGLSynth} synth
    */
   constructor (synth, playData) {
-    this.synth = synth;  
+    this.synth = synth;
     this.playData = synth.playData;
 
     this.historySamples = 32; // TODO: CHANGING THIS TO 16 or 1024 INFLUENCES BEAT DETECTION IN HURRICANE
@@ -19,13 +19,13 @@ export class StreamBuffer {
     this.streamFloatSize = ~~(this.streamVec4Count * 4);
 
     this.bufferData = new Float32Array(this.streamCount * this.streamFloatSize);
-    for (let ix = 0; ix < this.bufferData.length; ix++) {
-      this.bufferData[ix] = 1234.5678; //Math.sin(ix/2.0);
-    }
+    // for (let ix = 0; ix < this.bufferData.length; ix++) {
+    //   this.bufferData[ix] = 1234.5678; //Math.sin(ix/2.0);
+    // }
     const gl = this.synth.gl;
     gl.activeTexture(gl.TEXTURE3)
-    this.textureInfo = gl.createOrUpdateFloat32TextureBuffer(this.bufferData,{bufferWidth:synth.bufferWidth});
-    
+    this.textureInfo = gl.createOrUpdateFloat32TextureBuffer(this.bufferData, { texture:0, size:0, bufferWidth: synth.bufferWidth });
+
     // TODO: Consider other then stereo?
     /** @type {(noteEntry: SynthNote, synthTime?:number)=> {left:Float32Array,right:Float32Array}} */
     this.onGetData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
@@ -39,7 +39,7 @@ export class StreamBuffer {
 
   getStreamNr(trackNr) {
     // Every track/note gets it's own stream nr so we can play the same note twice
-    const streamNr = this.streamUsed % this.streamCount; 
+    const streamNr = this.streamUsed % this.streamCount;
     this.streamData[streamNr] = {
       lastOffset: ~~0,
       lastTime: Infinity,
@@ -50,14 +50,14 @@ export class StreamBuffer {
     return streamNr;
   }
   /**
-   * 
-   * @param {{left:Float32Array,right:Float32Array}} leftRight 
+   *
+   * @param {{left:Float32Array,right:Float32Array}} leftRight
    * @param {number} streamNr
-   * @param {Float32Array} buffer 
-   * @param {number} bufferOffset 
-   * @param {number} bufferSize 
-   * @param {number} startSampleNr 
-   * @param {number} count 
+   * @param {Float32Array} buffer
+   * @param {number} bufferOffset
+   * @param {number} bufferSize
+   * @param {number} startSampleNr
+   * @param {number} count
    */
   _fillBufferLR(leftRight, streamNr, buffer, bufferOffset, bufferSize, startSampleNr, count) {
     let l = leftRight.left;
@@ -72,8 +72,8 @@ export class StreamBuffer {
   };
 
   /**
-   * 
-   * @param {SynthNote} noteEntry 
+   *
+   * @param {SynthNote} noteEntry
    * @param {number} synthTime
    */
   fill(noteEntry, synthTime) {
@@ -104,7 +104,7 @@ export class StreamBuffer {
       const maxSampleNr = ~~(startSampleNr + sampleFutureCount);
       const sampleOffset = ~~(streamData.lastOffset / streamData.channelCount);
       const sampleCount = ~~(maxSampleNr - sampleOffset);
-      
+
       // TODO More possible paths for other data formats
       let leftRight = this.onGetData(noteEntry,synthTime);
       this._fillBufferLR(leftRight, streamNr, this.bufferData, streamData.lastOffset, this.streamFloatSize, sampleOffset, sampleCount);
@@ -116,7 +116,7 @@ export class StreamBuffer {
       streamData.lastOffset += sampleCount * 2;
       // this.firstChange = Math.min(this.firstChange, bufStart + track.lastOffset % trackSize2);
       // this.lastChange = Math.max(this.lastChange, bufStart + track.lastOffset % trackSize2);
-  
+
       streamData.lastTime = time;
     }
   }
@@ -128,7 +128,7 @@ export class StreamBuffer {
     // 1.3 sec with no fill for 2021 buffers
     // 1.5 sec with fill bug for 2021 buffers
     // 2 sec with partial update workingg for 2021 buffers 4 * 1024 tracksize
-    // 2 sec with partial update workingg for 2021 buffers 4 * 1024 tracksize and lowpass on 
+    // 2 sec with partial update workingg for 2021 buffers 4 * 1024 tracksize and lowpass on
     // 18 sec for 10021 buffers with 2048 sample low pass, samples are interpolated so 4096 reads per sample
     // 3.6 second for single track with crossfade to other track for 10021 buffers  lowpass 1024 samples * 2
     // 10021 buffers id 232.687 seconds of music
