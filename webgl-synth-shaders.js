@@ -11,8 +11,9 @@ const ivec3 = 'vec3';
 const int = 'float';
 
 // The shader that calculates the pixel values for the filled triangles
-const defaultHeader = /*glsl*/`precision highp float;
+const defaultHeader = /*glsl*/`
 precision highp int;
+precision highp float;
 precision highp sampler2DArray;
 
 in vec2 pixel_position;
@@ -279,6 +280,7 @@ void main(void) {
 playInput: /*glsl*/`// #synth-note-mode: exclusive // don't start the same not twice
 // options could be: all/exclusive/poly/mono/glide
 
+precision highp int;
 precision highp float;
 precision highp sampler2D;
 
