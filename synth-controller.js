@@ -283,29 +283,35 @@ class SynthController {
     if (!this.isInitialized) {
       this.isInitialized = true;
 
-      if (this.options.useSharedArrayBuffer && globalThis.SharedArrayBuffer) {
-        if (this.options.sharedArray) {
-          console.info('Audio output to SharedArrayBuffer');
-          // TODO: make it auto-switching for shared memory version or not
-          this.audioOutput = new AudioOutputSD({
-            sharedArray: this.options.sharedArray,
-            ...this.options.audioOutput
-          });
+      if (!this.options.skipAudio) {
+        if (this.options.useSharedArrayBuffer && globalThis.SharedArrayBuffer) {
+          if (this.options.sharedArray) {
+            console.info('Audio output to SharedArrayBuffer');
+            // TODO: make it auto-switching for shared memory version or not
+            this.audioOutput = new AudioOutputSD({
+              sharedArray: this.options.sharedArray,
+              ...this.options.audioOutput
+            });
+          } else {
+            console.info('Audio output to AudioOutputShared');
+            this.audioOutput = new AudioOutputShared(this.options.audioOutput);
+          }
         } else {
-          console.info('Audio output to AudioOutputShared');
-          this.audioOutput = new AudioOutputShared(this.options.audioOutput);
+          console.info('Audio output with postMessage');
+          this.audioOutput = new AudioOutput(this.options.audioOutput);
         }
-      } else {
-        console.info('Audio output with postMessage');
-        this.audioOutput = new AudioOutput(this.options.audioOutput);
-      }
-      this.audioOutput.onCalcBuffer = this.handleAudioDataRequestBound;
-      let blockSize = this.options.webgl.bufferWidth * this.audioOutput.options.channelCount;
-      this.audioOutput.ensureStarted(this.options.keepInBuffer / blockSize + 2, blockSize);
+        this.audioOutput.onCalcBuffer = this.handleAudioDataRequestBound;
 
-      // Sync audio parameters between components
-      this.sampleRate   = this.options.webgl.sampleRate   = this.audioOutput.sampleRate;
-      this.channelCount = this.options.webgl.channelCount = this.audioOutput.channelCount;
+        let blockSize = this.options.webgl.bufferWidth * this.audioOutput.options.channelCount;
+        this.audioOutput.ensureStarted(this.options.keepInBuffer / blockSize + 2, blockSize);
+
+        // Sync audio parameters between components
+        this.sampleRate = this.options.webgl.sampleRate = this.audioOutput.sampleRate;
+        this.channelCount = this.options.webgl.channelCount = this.audioOutput.channelCount;
+      } else {
+        this.sampleRate = this.options.webgl.sampleRate;
+        this.channelCount = this.options.webgl.channelCount;
+      }
 
       this.webGLSynth = new WebGLSynth({
         ...this.options.webgl,

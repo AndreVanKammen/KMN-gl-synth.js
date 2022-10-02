@@ -115,9 +115,14 @@ class WebGLSynth {
 
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.DEPTH_TEST);
-    const ext = gl.getExtension('EXT_color_buffer_float');
+    let ext = gl.getExtension('EXT_color_buffer_float');
     if (!ext) {
-      alert('need EXT_color_buffer_float');
+      alert('EXT_color_buffer_float is not supported on this device which is needed for this software!');
+      return;
+    }
+    ext = gl.getExtension('EXT_float_blend');
+    if (!ext) {
+      alert('EXT_float_blend is not supported on this device which is needed for this software!');
       return;
     }
 
@@ -659,9 +664,9 @@ class WebGLSynth {
 
         shader.a.vertexPosition.dis();
 
-        // Let blend mix the racks together
-        gl.enable(gl.BLEND);
+        // Let blend mix the tracks together
         gl.blendFunc(gl.ONE, gl.ONE);
+        gl.enable(gl.BLEND);
       } else {
         // Only one just overwrite target
         gl.disable(gl.BLEND);
@@ -854,8 +859,8 @@ class WebGLSynth {
     // Clearing is done in mixdownToOutput
     // gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
+    gl.enable(gl.BLEND);
 
     const a1 = this.attributeLineBuffer;
 
@@ -925,8 +930,8 @@ class WebGLSynth {
     if (tracks.length === 0) {
       return;
     }
-    gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
+    gl.enable(gl.BLEND);
     // WebGL2 API is missing the version per buffer :(
     // gl.blendEquationi(0,gl.MAX);
     gl.blendEquationSeparate(gl.FUNC_ADD, gl.MAX);
