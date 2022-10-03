@@ -47,6 +47,7 @@ class SynthController {
     this.handleAudioDataRequestBound = this.handleAudioDataRequest.bind(this);
     this.synthOutputTimeDiff = 0.0;
     this.streamMixer = undefined;
+    this.processBufferNr = 0;
   }
 
   triggerOnTime(timeZone, time, callback) {
@@ -96,9 +97,9 @@ class SynthController {
     if (this.analyzeOutputCallback) {
       if (this.webGLSynth.samplesCalculated) {
         //if (this.webGLSynth.checkSamplesReady()) {
-          this.webGLSynth.getCalculatedSamples();
+          this.webGLSynth.getCalculatedSamples(this.processBufferNr);
           this.analyzeOutputCallback();
-          this.webGLSynth.calculateSamples()
+          this.processBufferNr = this.webGLSynth.calculateSamples()
           ++this.analyzeFrameCount;
         //}
       } else {
@@ -107,7 +108,8 @@ class SynthController {
     } else {
       for (let ix = 0; ix < 20; ix++) {
         ++this.analyzeFrameCount;
-        if (!this.webGLSynth.calculateSamples()) {
+        this.processBufferNr = this.webGLSynth.calculateSamples();
+        if (this.webGLSynth.lastEntryCount === 0) {
           // outOfNotes = true;
           break
         }
@@ -145,7 +147,7 @@ class SynthController {
       this.analyzeFrameCount = 0;
       this.analyzeResolver = resolve;
 
-      this.webGLSynth.calculateSamples();
+      this.processBufferNr = this.webGLSynth.calculateSamples();
       // this.webGLSynth.synthTime += this.webGLSynth.bufferTime;
       defer(() => {
         this.getNextBuffer();
@@ -163,7 +165,7 @@ class SynthController {
     while (((stop = performance.now())-start) < 1000) {
       this.webGLSynth.synthTime = synthTime;
       this.webGLSynth.processCount = processCount;
-      this.webGLSynth.calculateSamples();
+      this.processBufferNr = this.webGLSynth.calculateSamples();
       // this.webGLSynth.getCalculatedSamples()
       this.webGLSynth.gl.clientWaitSync(this.webGLSynth.webGLSync, 0, 10);
       loopCount++;
@@ -207,8 +209,8 @@ class SynthController {
 
   handleWorkerData() {
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
-      this.webGLSynth.calculateSamples();
-      this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+      this.processBufferNr = this.webGLSynth.calculateSamples();
+      this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr));
     }
   }
 
@@ -230,13 +232,13 @@ class SynthController {
             // @ts-ignore That's why I checked it
             this.webGLSynth.getCalculatedSamples(this.audioOutput.sd);
           } else {
-            this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples());
+            this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr));
             this.handleNewBuffer();
           }
         }
       } else {
         let start = globalThis.performance.now();
-        this.webGLSynth.calculateSamples();
+        this.processBufferNr = this.webGLSynth.calculateSamples();
         let stop = globalThis.performance.now();
         this.calcTimeAvg = this.calcTimeAvg * 0.99 + 0.01 * (stop - start);
 

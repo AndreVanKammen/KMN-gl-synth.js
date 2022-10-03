@@ -8,6 +8,7 @@ import SynthPlayData, { ControlHandler, ControlBase, SynthBaseEntry, SynthMixer,
 import { otherControls } from './otherControls.js';
 import { TrackLineInfo, WebGLMemoryManager } from './webgl-memory-manager.js';
 import { WebGLSynthControls } from './webgl-synth-controls.js';
+import { AudioOutputSharedData } from './audio-worklet-shared.js';
 
 // https://stackoverflow.com/questions/53562825/glreadpixels-fails-under-webgl2-in-chrome-on-mac
 // Fix needed for Linux Mac & android
@@ -32,6 +33,7 @@ const defaultOptions = {
 };
 
 const defaultShaderName = 'piano'
+const outputBufferCycleCount = 2;
 
 class WebGLSynth {
   constructor(options) {
@@ -44,6 +46,9 @@ class WebGLSynth {
     this.bufferTime = this.bufferWidth / this.options.sampleRate;
     this.canvas = this.options.canvas;
 
+    this.webGLSync = [];
+
+    this.lastEntryCount = 0;
     this.stopOutput = false;
     this.recordAnalyze = false;
 
@@ -177,15 +182,15 @@ class WebGLSynth {
     // TODO
   }
 
-  setOutputCount(outputBuffersCount) {
-    this.outputBuffersCount = outputBuffersCount;
+  setOutputCount(outputBufferHeight) {
+    this.outputBufferHeight = outputBufferHeight;
     // TODO Cleanup of buffers and texture
     // if (this.outputTexture) {
     //   this.gl.deleteTexture(this.outputTexture
     // }
-    this.outputTexture = this.createSampleTextures(1, outputBuffersCount);
+    this.outputTexture = this.createSampleTextures(outputBufferCycleCount, outputBufferHeight);
     // The buffer for reading the output of the videocard
-    this.readSampleBuffer = new Float32Array(this.floatWidthGPU * this.outputBuffersCount);
+    this.readSampleBuffer = new Float32Array(this.floatWidthGPU * this.outputBufferHeight);
   }
 
   startRecordAnalyze(bufferSize, fragmentWidth, step) {
@@ -789,13 +794,16 @@ class WebGLSynth {
   // We could change readpixels to just read the mixed down output from the samplebuffer if we mixed down
   // to one line, but that would not svae a lot. We can als use the output buffer to collect
   // all output in one place and use it for rmsand frequency info as well
-  /** @param {SynthNote[]} tracks */
-  mixdownToOutput(tracks) {
+  /**
+   * @param {SynthNote[]} tracks
+   * @param {number} currentOutputBuffer
+   */
+  mixdownToOutput(tracks, currentOutputBuffer) {
     const gl = this.gl;
 
-    gl.viewport(0, 0, this.bufferWidth, this.outputBuffersCount);
+    gl.viewport(0, 0, this.bufferWidth, this.outputBufferHeight);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[currentOutputBuffer]);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     if (tracks.length === 0) {
@@ -820,7 +828,7 @@ class WebGLSynth {
 
       // a1[attrOfs + 1] = a1[attrOfs + 5] = ~~(tli.current / this.bufferHeight);
       // a1[attrOfs + 2] = a1[attrOfs + 6] = ~~(tli.current % this.bufferHeight);
-      a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * 0.5 / this.outputBuffersCount;
+      a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * 0.5 / this.outputBufferHeight;
       a1[attrOfs + 2] = a1[attrOfs + 6] = ~~tli.current;
       a1[attrOfs + 3] = a1[attrOfs + 7] = ~~(tli.passNr % 2);
       attrOfs += 8;
@@ -849,13 +857,16 @@ class WebGLSynth {
     shader.a.vertexPosition.dis();
   }
 
-  /** @param {TrackLineInfo[]} lineInfos */
-  copyDataToOutput(lineInfos) {
+  /**
+   * @param {TrackLineInfo[]} lineInfos
+   * @param {number} currentOutputBuffer
+   */
+  copyDataToOutput(lineInfos,currentOutputBuffer) {
     const gl = this.gl;
 
-    gl.viewport(0, 0, this.bufferWidth, this.outputBuffersCount);
+    gl.viewport(0, 0, this.bufferWidth, this.outputBufferHeight);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[currentOutputBuffer]);
     // Clearing is done in mixdownToOutput
     // gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -876,7 +887,7 @@ class WebGLSynth {
         a1[attrOfs + 0] = -1.0;
         a1[attrOfs + 4] = 1.0;
 
-        a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * (tli.exportOutputNr + outIx + 1.5) / this.outputBuffersCount;
+        a1[attrOfs + 1] = a1[attrOfs + 5] = -1.0 + 2.0 * (tli.exportOutputNr + outIx + 1.5) / this.outputBufferHeight;
         a1[attrOfs + 2] = a1[attrOfs + 6] = ~~tli.getCurrentOutput(outIx);
         a1[attrOfs + 3] = a1[attrOfs + 7] = ~~(tli.passNr % 2);
         attrOfs += 8;
@@ -1117,10 +1128,11 @@ class WebGLSynth {
       }
     }
 
-    this.mixdownToOutput(calculatedTracks);
+    let currentOutputBuffer = this.processCount % outputBufferCycleCount;
+    this.mixdownToOutput(calculatedTracks, currentOutputBuffer);
     this.calculateVolume(calculatedTracks);
     if (outputInfos.length > 0) {
-      this.copyDataToOutput(outputInfos);
+      this.copyDataToOutput(outputInfos, currentOutputBuffer);
     }
 
     shaderPasses += 2;
@@ -1137,24 +1149,22 @@ class WebGLSynth {
 
     this.totalEntryTime += stop - start;
 
-    // TODO: make sync for multiple timeslots so we can work in parralel
-    // if (this.recordAnalyze) {
-    //   this.webGLSync = null;
-    // } else {
-      this.webGLSync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
-    // }
+    this.webGLSync[currentOutputBuffer] = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     this.samplesCalculated = true;
     this.synthTime += this.bufferTime;
 
-    return currentEntries.length > 0;
+    this.lastEntryCount = currentEntries.length;
+    return this.processCount++;
   }
 
-  checkSamplesReady() {
-    if (!this.webGLSync) {
+  checkSamplesReady(processCount) {
+    let currentOutputBuffer = processCount % outputBufferCycleCount;
+    let sync = this.webGLSync[currentOutputBuffer]
+    if (!sync) {
       return true;
     }
     this.gl.finish();
-    let state = this.gl.clientWaitSync(this.webGLSync, 0, 0); // THis errprs with more then 0 STUPID ERROR this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
+    let state = this.gl.clientWaitSync(sync, 0, 0); // THis errprs with more then 0 STUPID ERROR this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
     // let state = this.gl.clientWaitSync(this.webGLSync, 0, this.gl.MAX_CLIENT_WAIT_TIMEOUT_WEBGL-1)
     // console.log('state: ', state);
     // 37146 ALREADY ALREADY_SIGNALED
@@ -1168,13 +1178,20 @@ class WebGLSynth {
     //    (state === this.gl.ALREADY_SIGNALED);
   }
 
-  getCalculatedSamples(sharedData) {
+  /**
+   * @param {number} processCount
+   * @param {AudioOutputSharedData} sharedData
+   * @returns
+   */
+  getCalculatedSamples(processCount, sharedData = null) {
     this.samplesCalculated = false;
     const gl = this.gl;
     let bufferData = this.audioOutputBuffer;
     if (sharedData) {
       bufferData = sharedData.getNextBlockView();
     }
+
+    const currentOutputBuffer = processCount % outputBufferCycleCount;
     //
 
     // if (!this.webGLSync) {
@@ -1184,11 +1201,12 @@ class WebGLSynth {
     //   return bufferData;
     // }
 
-    if (this.webGLSync) {
-      gl.clientWaitSync(this.webGLSync, 0, 0);
-      this.webGLSync = null;
+    let sync = this.webGLSync[currentOutputBuffer];
+    if (sync) {
+      gl.clientWaitSync(sync, 0, 0);
+      this.webGLSync[currentOutputBuffer] = null;
     }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[0]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.outputTexture.buffers[currentOutputBuffer]);
     // Thanks for https://stackoverflow.com/questions/45571488/webgl-2-readpixels-on-framebuffers-with-float-textures
     gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
     gl.readBuffer(gl.COLOR_ATTACHMENT0);
@@ -1197,7 +1215,7 @@ class WebGLSynth {
       0,
       0,
       this.bufferWidth,
-      this.outputBuffersCount,
+      this.outputBufferHeight,
       force4Components ? gl.RGBA : this.glFormat,
       gl.FLOAT,
       this.readSampleBuffer
@@ -1307,7 +1325,6 @@ class WebGLSynth {
     if (sharedData) {
       sharedData.nextWriteBlockNr++;
     }
-    this.processCount++;
 
     return bufferData;
   }
