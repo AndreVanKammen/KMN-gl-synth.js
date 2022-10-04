@@ -19,7 +19,7 @@ const force4Components = true; // Setting to false doesn't give memory saving in
 // D3D9 DOESN'T work, looks like webgl2 support missing
 // D3D11 same memory savings (maybe it was reloading the browser) meory usage still the same with force4Components = true
 // Back on default memory is lower again. opening debugger once also increases GPU memory a lot (Dedicated GPU in
-const useTexStorage = true
+const useTexStorage = true;
 const mixdownShader = '#mixdown';
 
 // Got to 3.5GB of memory usage, more seems to crash webgl in the page
@@ -32,7 +32,6 @@ const defaultOptions = {
   outputBufferCount: 1 // Number of output lines read from the GPU
 };
 
-const defaultShaderName = 'piano'
 const outputBufferCycleCount = 2;
 
 class WebGLSynth {
@@ -76,8 +75,8 @@ class WebGLSynth {
 
     // const formatIndex = this.componentCount - 1;
     // TODO: set all to 4 components
-    this.glInternalFormat = gl.RGBA32F;//[gl.R32F, gl.RG32F, gl.RGB32F,gl.RGBA32F][formatIndex];
-    this.glFormat = gl.RGBA;//[gl.RED, gl.RG, gl.RGB, gl.RGBA][formatIndex];
+    this.glInternalFormat = force4Components ? gl.RGBA32F : gl.RG32F;//[gl.R32F, gl.RG32F, gl.RGB32F,gl.RGBA32F][formatIndex];
+    this.glFormat = force4Components ? gl.RGBA : gl.RG;//[gl.RED, gl.RG, gl.RGB, gl.RGBA][formatIndex];
     // this.glInternalFormat = [gl.R32F, gl.RG32F, gl.RGB32F,gl.RGBA32F][formatIndex];
     // this.glFormat = [gl.RED, gl.RG, gl.RGB, gl.RGBA][formatIndex];
 
@@ -114,7 +113,6 @@ class WebGLSynth {
     this.copyLineShader = this.getProgram(SystemShaders.copyLineVertex, SystemShaders.copyLine);
     this.rmsAvgEngMaxValueShader = this.getProgram(SystemShaders.rmsAvgEngMaxVertex, SystemShaders.rmsAvgEngMax);
 
-    this.defaultShaderName = defaultShaderName;
     this.shaderPrograms = {};
     this.effectPrograms = {};
 
@@ -122,13 +120,11 @@ class WebGLSynth {
     gl.disable(gl.DEPTH_TEST);
     let ext = gl.getExtension('EXT_color_buffer_float');
     if (!ext) {
-      alert('EXT_color_buffer_float is not supported on this device which is needed for this software!');
-      return;
+      console.error('EXT_color_buffer_float is not supported on this device which is needed for this software!');
     }
     ext = gl.getExtension('EXT_float_blend');
     if (!ext) {
-      alert('EXT_float_blend is not supported on this device which is needed for this software!');
-      return;
+      console.error('EXT_float_blend is not supported on this device which is needed for this software!');
     }
 
     this.backBufferTestBuffer = new Float32Array(this.bufferWidth * 1 * 4),
@@ -345,7 +341,6 @@ class WebGLSynth {
     const compileInfo = this.gl.getCompileInfo(this.getDefaultDefines() + this.updateSource(source), this.gl.FRAGMENT_SHADER, 2);
     if (compileInfo.compileStatus) {
       this.shaderPrograms[name] = this.getInputProgram(source);
-      this.defaultShaderName = name;
       console.info('Synth shader compiled OK');
     } else {
       console.log('Shader error: ',compileInfo);
