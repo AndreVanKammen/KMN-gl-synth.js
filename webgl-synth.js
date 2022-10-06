@@ -138,9 +138,9 @@ class WebGLSynth {
 
     // Attribute buffers for sending to videocard
     // TODO size is way to big, needs a maxtracks
-    this.attributeLineBuffer  = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
-    this.attributeLineBuffer2 = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
-    this.attributeLineBuffer3 = new Float32Array(this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    this.attributeLineBuffer  = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    this.attributeLineBuffer2 = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    this.attributeLineBuffer3 = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
 
     this.lastBufferLevel = 0;
 
@@ -1125,7 +1125,7 @@ class WebGLSynth {
 
     let currentOutputBuffer = this.processCount % outputBufferCycleCount;
     this.mixdownToOutput(calculatedTracks, currentOutputBuffer);
-    this.calculateVolume(calculatedTracks);
+    // this.calculateVolume(calculatedTracks);
     if (outputInfos.length > 0) {
       this.copyDataToOutput(outputInfos, currentOutputBuffer);
     }

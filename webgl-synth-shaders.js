@@ -754,6 +754,23 @@ block(phase)`,
 "saw": /*glsl*/`// #include formula
 saw(phase)`,
 "triangle": /*glsl*/`// #include formula
-triangle(phase)`
+triangle(phase)`,
+"none": /*glsl*/`// #include effect
+vec2 effectMain(void) {
+  return getInputSample(0.0);
+}`,
+"ms delay": /*glsl*/`// #include effect
+vec2 effectMain(void) {
+  return getInputSample(-0.001);
+}`,
+"lowpass": /*glsl*/`// #include effect
+const int numSamples = 20;
+vec2 effectMain(void) {
+  vec2 sampleValue = vec2(0.0);
+  for (int ix = 0; ix < numSamples; ix++) {
+    sampleValue += getInputSample(-float(ix) * sampleTime);
+  }
+  return sampleValue / float(numSamples) * ((50.0+float(numSamples))/50.0);
+}`,
 }
 export default SystemShaders
