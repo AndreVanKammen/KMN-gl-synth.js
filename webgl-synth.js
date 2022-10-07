@@ -1125,7 +1125,7 @@ class WebGLSynth {
 
     let currentOutputBuffer = this.processCount % outputBufferCycleCount;
     this.mixdownToOutput(calculatedTracks, currentOutputBuffer);
-    // this.calculateVolume(calculatedTracks);
+    this.calculateVolume(calculatedTracks);
     if (outputInfos.length > 0) {
       this.copyDataToOutput(outputInfos, currentOutputBuffer);
     }
