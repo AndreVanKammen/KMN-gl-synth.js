@@ -536,7 +536,7 @@ vec4 effectMain(void) {
     tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);
   }
-  return tracer / float(bufW2);
+  return tracer / float(bufW2) * 2.0;
 }
 `,
   "iDFT": /*glsl*/`// #include effect4
@@ -758,6 +758,10 @@ triangle(phase)`,
 "none": /*glsl*/`// #include effect
 vec2 effectMain(void) {
   return getInputSample(0.0);
+}`,
+"delay-1-buffer": /*glsl*/`// #include effect
+vec2 effectMain(void) {
+  return getInputSample(-float(bufferWidth) / float(sampleRate));
 }`,
 "ms delay": /*glsl*/`// #include effect
 vec2 effectMain(void) {
