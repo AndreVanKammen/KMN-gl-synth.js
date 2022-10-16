@@ -1295,8 +1295,8 @@ class WebGLSynth {
       let oldValue = this.correctiveVolume;
       if (newValue < this.correctiveVolume) {
         this.correctiveVolume =
-          0.9 * this.correctiveVolume +
-          0.1 * newValue;
+          0.7 * this.correctiveVolume +
+          0.3 * newValue;
       } else {
         this.correctiveVolume =
           0.998 * this.correctiveVolume +
@@ -1305,15 +1305,18 @@ class WebGLSynth {
       correctiveDelta = (oldValue - this.correctiveVolume) / this.floatWidth;
       // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);
     }
-
     if (this.automaticVolume) {
+      let clamping = false;
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
         bufferData[ix] *= this.correctiveVolume - correctiveDelta * (this.floatWidth - ix);
         if (Math.abs(bufferData[ix]) > 0.999999) {
           bufferData[ix] = Math.max(-0.999999, Math.min(0.999999, bufferData[ix]));
-          // console.log('volume to loud, buffer clamped!');
+          clamping = true;
         }
+      }
+      if (clamping) {
+        console.log('volume to loud, buffer clamped!');
       }
     }
 

@@ -364,7 +364,7 @@ void main(void) {
   // sampleVal += sin(float(sampleNr)/100.0*pi2);
 
   // Return the sound to the videocard buffer at half volume
-  fragColor = vec4(clamp(sampleVal,-1.0,1.0), 0.0, 1.0);
+  fragColor = vec4(sampleVal, 0.0, 1.0);
 }
 `,
 
