@@ -32,7 +32,7 @@ const defaultOptions = {
   getContextTime() {
     return this.audioCtx.getOutputTimestamp().contextTime;
   }
-  
+
   onWorkerMessage(evt) {
     this.dataInBuffer = evt.data.bufferLength;
     this.bufferEmptyCount = evt.data.bufferEmptyCount;
@@ -50,10 +50,17 @@ const defaultOptions = {
     }
   }
 
-  postBuffer(sampleData) {
+  postBuffer(sampleData, outputVolume = 1.0) {
     this.ensureStarted();
+1
+    if (outputVolume !== 1.0) {
+      sampleData = new Float32Array(sampleData);
+      for (let ix = 0; ix < sampleData.length; ix++) {
+        sampleData[ix] *= outputVolume;
+      }
+    }
 
-    // Worklet needs to start 1st so we will miss the 1st buffer and 
+    // Worklet needs to start 1st so we will miss the 1st buffer and
     // put it in a buffer to build a head start
     if (this.audioWorklet) {
       while (this.initBuffers.length >0) {

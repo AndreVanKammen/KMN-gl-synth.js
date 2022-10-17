@@ -23,7 +23,7 @@ export class AudioOutputSD {
   get dataInBuffer() {
     return this.sd.dataInBuffer;
   }
-  
+
   get bufferEmptyCount() {
     return this.sd.bufferEmptyCount;
   }
@@ -35,7 +35,7 @@ export class AudioOutputSD {
   ensureStarted(blockCount, blockSize) {
     if (!this.isInitialized) {
       this.isInitialized = true;
-      
+
       this.sampleRate = this.options.sampleRate || 44100;
       this.channelCount = this.options.channelCount;
 
@@ -52,13 +52,13 @@ export class AudioOutputSD {
     this.sd.waitOnBufferPosChange().then(this.handleDataInBufferChangeBound);
   }
 
-  postBuffer(sampleData) {
+  postBuffer(sampleData, outputVolume = 1.0) {
     // this.ensureStarted(sampleData.length);
 
     let ofs = this.sd.getWriteBlockOffset();
     let fa = this.sd.floatArray;
     for (let ix = 0; ix < this.sd.blockSize; ix++) {
-      fa[ofs++] = sampleData[ix];
+      fa[ofs++] = sampleData[ix] * outputVolume;
     }
     this.sd.nextWriteBlockNr++;
   }
@@ -112,7 +112,7 @@ export class AudioOutputShared extends AudioOutputSD {
 
         this.audioWorklet.connect(this.audioCtx.destination);
         this.audioWorklet.port.postMessage(this.sd.sharedArray);
-        
+
         if (this.onCalcBuffer) {
           this.sd.waitOnBufferPosChange().then(this.handleDataInBufferChangeBound);
         }

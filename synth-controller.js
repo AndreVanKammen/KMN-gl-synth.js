@@ -48,6 +48,7 @@ class SynthController {
     this.synthOutputTimeDiff = 0.0;
     this.streamMixer = undefined;
     this.processBufferNr = 0;
+    this.outputVolume = 1.0;
   }
 
   triggerOnTime(timeZone, time, callback) {
@@ -210,7 +211,7 @@ class SynthController {
   handleWorkerData() {
     while (this.audioOutput.dataInBuffer < this.options.keepInBuffer) {
       this.processBufferNr = this.webGLSynth.calculateSamples();
-      this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr));
+      this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr), this.outputVolume);
     }
   }
 
@@ -232,7 +233,7 @@ class SynthController {
             // @ts-ignore That's why I checked it
             this.webGLSynth.getCalculatedSamples(this.audioOutput.sd);
           } else {
-            this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr));
+            this.audioOutput.postBuffer(this.webGLSynth.getCalculatedSamples(this.processBufferNr), this.outputVolume);
             this.handleNewBuffer();
           }
         }
