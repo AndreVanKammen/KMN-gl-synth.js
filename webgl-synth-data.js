@@ -1,5 +1,5 @@
 // Copyright by André van Kammen
-// Licensed under CC BY-NC-SA 
+// Licensed under CC BY-NC-SA
 // https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 import defer from '../KMN-utils.js/defer.js';
@@ -55,9 +55,9 @@ export class ControlBase {
       // 10: 'Pan',
 
       // TODO time is never used, so why are we passing it?
-      //      my previous idea was to pass the change times 
+      //      my previous idea was to pass the change times
       //      so the videocard can do the interpolation but that would need to be a setting
-    
+
       for (let ctrl in this.controlDefaults) {
         let ctrlNr = ~~ctrl;
         let value = this.controlDefaults[ctrl];
@@ -66,7 +66,7 @@ export class ControlBase {
         this.controlBuffer[ctrlNr * 4 + 2] = value;
         this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
       }
-    } 
+    }
     for (let ctrl of this.getControlList() ) {
       let ctrlNr = ~~ctrl;
       // let value = this.controls[ctrl];
@@ -84,7 +84,7 @@ export class ControlBase {
         this.controlBuffer[ctrlNr * 4 + 3] = synthTime + bufferTime;
       }
     }
-    
+
     // Test to see if any value comes trough
     // for (let ix = 0; ix < this.controlBuffer.length; ix++) {
     //   this.controlBuffer[ix] = 123.456;
@@ -110,7 +110,7 @@ export class ControlHandler extends ControlBase {
     let controlInfo = this.controlChanges[controlType];
     if (!controlInfo) {
       controlInfo = this.controlChanges[controlType] = {
-        controlData: [], 
+        controlData: [],
         interpolate};
     }
     controlInfo.controlData.push({time, value});
@@ -152,12 +152,12 @@ export class ControlHandler extends ControlBase {
     return defaultValue;
   }
 
-  
+
 }
 // Base for all audio handling classes here
 export class SynthBaseEntry {
   /**
-   * @param {SynthMixer} mixer 
+   * @param {SynthMixer} mixer
    */
   constructor (mixer) {
     this.mixer = mixer;
@@ -172,13 +172,13 @@ export class SynthBaseEntry {
 
     /** @type {{ bufferNr:number, outputNr:number }[]} */
     this.outputs = [];
-    
+
     this._finishResolvers = [];
   }
 
   setOutputData(bufferNr, outputNr) {
     for (let ix = 0; ix < this.outputs.length; ix++) {
-      if (this.outputs[ix].bufferNr) {
+      if (this.outputs[ix].bufferNr === bufferNr) {
         this.outputs[ix].outputNr = outputNr;
         return;
       }
@@ -195,10 +195,10 @@ export class SynthBaseEntry {
 
   /**
    * Updates the buffer allocations for the whole effect path within the mixer
-   * @param {WebGLSynth} synth 
-   * @param {SynthMixer} mixer 
-   * @param {number} passNr 
-   * @returns Last 
+   * @param {WebGLSynth} synth
+   * @param {SynthMixer} mixer
+   * @param {number} passNr
+   * @returns Last
    */
   updateBuffers(synth, mixer, passNr) {
     if (mixer && (mixer.effects.length > 0)) {
@@ -216,9 +216,9 @@ export class SynthBaseEntry {
         // Get (new) memory if necessary
         if (this.buffers[ix].updateAllocation(passNr, count)) {
         }
-  
+
         this.buffers[ix].updateCurrent();
-  
+
         passNr++;
       }
     } else {
@@ -226,7 +226,7 @@ export class SynthBaseEntry {
         this.buffers.push(synth.memoryManager.getTrackLineInfo())
       } else {
         for (let ix = 1; ix < this.buffers.length; ix++) {
-          this.buffers[ix].freeBuffer();  
+          this.buffers[ix].freeBuffer();
         }
         this.buffers = [this.buffers[0]];
       }
@@ -300,7 +300,7 @@ export class SynthMixer extends SynthBaseEntry {
   /**
    * Set's the sample/audiotracks for us by the shader
    * TODO rename playinput to plattrack
-   *  @param {IAudioTracks} audioTracks 
+   *  @param {IAudioTracks} audioTracks
    */
   setAudioStreams(audioTracks, synth) {
     // TODO: Move the buffer filling to the audiottrack implementation
@@ -336,13 +336,13 @@ class NoteData {
 // Base for playing notes trough the synth
 export class SynthNote extends SynthBaseEntry {
   /**
-   * 
-   * @param {SynthPlayData} owner 
-   * @param {number} time 
-   * @param {string} timeZone 
-   * @param {SynthMixer} mixer 
-   * @param {Partial<NoteData>} data 
-   * @param {ControlBase} channelControl 
+   *
+   * @param {SynthPlayData} owner
+   * @param {number} time
+   * @param {string} timeZone
+   * @param {SynthMixer} mixer
+   * @param {Partial<NoteData>} data
+   * @param {ControlBase} channelControl
    */
   constructor (owner, time, timeZone, mixer, data, channelControl) {
     super(mixer);
@@ -364,7 +364,7 @@ export class SynthNote extends SynthBaseEntry {
     this.timeVersion = 0;
     this.synthStart = 0.0;
     this.synthEnd = 0.0;
-  
+
     this.isStarted = false;
     this.isFinished = false;
 
@@ -386,7 +386,7 @@ export class SynthNote extends SynthBaseEntry {
     this.noteControl = new ControlHandler(owner, timeZone);
     this.recordStartIndex = -1;
   }
-  
+
   setRecordStart(index) {
     this.recordStartIndex = index
   }
@@ -395,7 +395,7 @@ export class SynthNote extends SynthBaseEntry {
     // TODO: also add pitch here
     return this.channelControl.getControlAtTime(controlTime, otherControls.playDirection, 1.0);
   }
-  
+
   release (time, velocity, clearNoteAfterTime = extraAfterRelease) {
     if (velocity>=0) {
       this.noteControl.addControl(time, otherControls.releaseVelocity, velocity);
@@ -424,7 +424,7 @@ export class SynthNote extends SynthBaseEntry {
 
 class SynthPlayData {
   constructor (synth) {
-   
+
     /** @type {WebGLSynth} */
     this.synth = synth;
 
@@ -461,7 +461,7 @@ class SynthPlayData {
 
     /** @type {SynthNote[]} */
     this.entries = [];
-    
+
     /** @type {Array<SynthMixer>}*/
     this.startMixers = [];
 
@@ -522,20 +522,20 @@ class SynthPlayData {
   }
 
   /**
-   * 
-   * @param {string} timeZone 
-   * @param {number} channel 
+   *
+   * @param {string} timeZone
+   * @param {number} channel
    * @returns {ControlHandler}
    */
   getChannelControl(timeZone, channel) {
     let key = timeZone + '_' + channel;
-    return this.channelControls[key] || 
+    return this.channelControls[key] ||
           (this.channelControls[key] = new ControlHandler(this, timeZone));
   }
 
   /**
    * Adds a note to be played by the synth
-   * @param {number} time Time within this timezon for the note to start 
+   * @param {number} time Time within this timezon for the note to start
    * @param {string} timeZone Timezone for this note
    * @param {number} channel Midi channel to play in (usaed for controls)
    * @param {SynthMixer} mixer The mixer to use for playing
@@ -558,7 +558,7 @@ class SynthPlayData {
 
   /**
    * register a mixer for note entries
-   * @param {SynthMixer} startMixer 
+   * @param {SynthMixer} startMixer
    */
   registerStartMixer(startMixer) {
     this.startMixers.push(startMixer);
@@ -594,15 +594,15 @@ class SynthPlayData {
   // TODO create pull construction for playing midi files
   /**
    * Get's all the notes that are playing now
-   * @param {number} synthTime 
-   * @param {number} bufferTime 
+   * @param {number} synthTime
+   * @param {number} bufferTime
    * @returns {SynthNote[]}
    */
   getCurrentEntries(synthTime, bufferTime) {
     let timedEntries = [];
     for (let ix = this.startIx; ix < this.entries.length; ix++) {
       let entry = this.entries[ix];
-      // Only return unfinished notes, they form the root 
+      // Only return unfinished notes, they form the root
       if (entry.isFinished) {
         continue;
       }
@@ -619,7 +619,7 @@ class SynthPlayData {
       //   continue;
       // }
 
-      if (!entry.isStarted) { 
+      if (!entry.isStarted) {
         // let t = entry.synthStart - synthTime;
         // if (t < 0.0) {
         //   // Prevent multiple times in one run, or does the line here handle that?
