@@ -97,12 +97,10 @@ class SynthController {
     // let outOfNotes = false;
     if (this.analyzeOutputCallback) {
       if (this.webGLSynth.samplesCalculated) {
-        //if (this.webGLSynth.checkSamplesReady()) {
-          this.webGLSynth.getCalculatedSamples(this.processBufferNr);
-          this.analyzeOutputCallback();
-          this.processBufferNr = this.webGLSynth.calculateSamples()
+        this.webGLSynth.getCalculatedSamples(this.processBufferNr);
+        this.analyzeOutputCallback();
+         this.processBufferNr = this.webGLSynth.calculateSamples()
           ++this.analyzeFrameCount;
-        //}
       } else {
         this.webGLSynth.calculateSamples()
       }
