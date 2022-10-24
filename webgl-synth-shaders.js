@@ -632,9 +632,9 @@ vec4 effectMain(void) {
   int n = int(round(pixel_position.x));// + float(bufWH - offset);
   vec4 res = fourierMain(n, 0);
   if (n > bufWH) {
-    return (fourierMain(n - bufWH, bufWH) + res) * 0.5;
+    return (fourierMain(n - bufWH, bufWH) + res);
   } else {
-    return (fourierMain(n + bufWH, -bufWH) + res) * 0.5;
+    return (fourierMain(n + bufWH, -bufWH) + res);
   }
   return
     fourierMain(n, 0);
