@@ -607,8 +607,8 @@ vec4 effectMain(void) {
 "iDFT2": /*glsl*/`// #include effect4
 const int bufWH = bufferWidth / 2;
 
-vec4 fourierMain(int offset) {
-  float n = round(pixel_position.x);// + float(bufWH - offset);
+vec4 fourierMain(int pos, int offset) {
+  float n = float(pos); // round(pixel_position.x);// + float(bufWH - offset);
   float frequencyRatio = pow(2.0, (12.0 - pitchRange * pitch + getControl(133)) / 12.0) / 2.0;
 
   vec2 sampleValue= vec2(0.0);
@@ -619,7 +619,7 @@ vec4 fourierMain(int offset) {
                 * pi2
                 * progress * frequencyRatio;
 
-    vec2 v = vec2(cos(phase),sin(phase));// * (0.5 - 0.5 * cos(progress * pi2));
+    vec2 v = vec2(cos(phase),sin(phase)) * (0.5 - 0.5 * cos(progress * pi2));
     sampleValue += fourierValue.xz * v.x- fourierValue.yw * v.y;
   }
   return vec4(sampleValue ,0.0,1.0);
@@ -629,11 +629,25 @@ vec4 effectMain(void) {
   if (time<0.0) {
     return vec4(0.0);
   }
+  int n = int(round(pixel_position.x));// + float(bufWH - offset);
+  vec4 res = fourierMain(n, 0);
+  if (n > bufWH) {
+    return (fourierMain(n - bufWH, bufWH) + res) * 0.5;
+  } else {
+    return (fourierMain(n + bufWH, -bufWH) + res) * 0.5;
+  }
   return
-    fourierMain(0);// +
+    fourierMain(n, 0);
     //fourierMain(bufWH);
 }
 `,
+
+// 12 34 56
+//  1 23 4
+//  2 34 5
+
+//    23
+//  2  3
 
 "DFT_log": /*glsl*/`// #include effect4
 
