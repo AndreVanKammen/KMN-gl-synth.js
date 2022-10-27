@@ -284,6 +284,8 @@ class IAudioTracks {
 }
 
 let mixerHash = 123;
+/** @type {StreamBuffer} */
+let globalStreamBuffer = null;
 export class SynthMixer extends SynthBaseEntry {
   constructor (mixer, inputShaderName) {
     super(mixer);
@@ -304,7 +306,11 @@ export class SynthMixer extends SynthBaseEntry {
    */
   setAudioStreams(audioTracks, synth) {
     // TODO: Move the buffer filling to the audiottrack implementation
-    this.streamBuffer = new StreamBuffer(synth);
+    if (!globalStreamBuffer) {
+      globalStreamBuffer = new StreamBuffer(synth);
+    }
+    this.streamBuffer = globalStreamBuffer;
+    // this.streamBuffer = new StreamBuffer(synth);
     // TODO: Every track can have it's own sampleRate or does decode fix that for us?
     // streamBuffer.sampleRate = audioData.sampleRate;
     // TODO: Consider other than stereo?
