@@ -172,6 +172,56 @@ void main(void) {
 
   gl_Position = vec4(-1.0+2.0*float(gl_VertexID % 2), vertexPosition.y, 0.0, 1.0);
 }`,
+vertexPull: /*glsl*/`precision highp float;
+precision highp int;
+precision highp sampler2D;
+
+uniform sampler2D vertexPullTexture;
+
+// Some of these could be done by uniform in vertex, but that would require seperate draw calls
+out vec2 pixel_position;
+out float phaseTime;
+out float time;
+out float releaseTime;
+
+out float note; // Note number in MIDI 0-127
+out float velocity; // Velocity 0.0 - 1.0
+out float releaseVelocity;
+out float aftertouch; // Aftertouch 0.0 - 1.0
+${needs_flat}out ${ivec3} trackLineInfo; // Input line info from sampleBuffer
+${needs_flat}out ${int} backBufferIx;
+
+const float offsetCorrection = 0.5 / float(bufferWidth) * float(bufferWidth-1);
+
+void main(void) {
+  int vertexIx = (gl_VertexID / 2) * 4;
+
+  int vert1 = vertexIx + gl_VertexID % 2;
+  vec4 vertexPosition = texelFetch(vertexPullTexture, ivec2(vert1 % 1024, vert1 / 1024), 0);
+  vertexIx += 2;
+  vec4 attributes2 = texelFetch(vertexPullTexture, ivec2(vertexIx % 1024, vertexIx / 1024), 0);
+  vertexIx++;
+  vec4 attributes3 = texelFetch(vertexPullTexture, ivec2(vertexIx % 1024, vertexIx / 1024), 0);
+
+  pixel_position.x = bool(gl_VertexID % 2) //vertexPosition.x > 0.0)
+                   ? float(bufferWidth) - offsetCorrection
+                   : -offsetCorrection;
+
+  time            = vertexPosition.x;
+  phaseTime       = vertexPosition.z;
+  releaseTime     = vertexPosition.w;
+
+  note            = attributes2.x;
+  velocity        = attributes2.y;
+  releaseVelocity = attributes2.z;
+  aftertouch      = attributes2.w;
+
+  trackLineInfo = ${ivec3}(floor(attributes3.xyz));
+
+  backBufferIx = ${int}(floor(attributes3.w));
+
+  gl_Position = vec4(-1.0+2.0*float(gl_VertexID % 2), vertexPosition.y, 0.0, 1.0);
+}`,
 "zero": /*glsl*/`precision highp float;
 layout(location = 0) out vec4 fragColor;
 void main(void) {

@@ -21,10 +21,13 @@ const force4Components = true; // Setting to false doesn't give memory saving in
 // Back on default memory is lower again. opening debugger once also increases GPU memory a lot (Dedicated GPU in
 const useTexStorage = true;
 const mixdownShader = '#mixdown';
+// const vertextPull = true;
+const vertextPull = false;
 
 // Got to 3.5GB of memory usage, more seems to crash webgl in the page
 const defaultOptions = {
   sampleRate: 44100,
+  maxNotes: 512,
   bufferWidth: 512, // 1024,
   bufferHeight: 1024,
   bufferCount: 64, // Is for source and target so 2 times as big
@@ -44,6 +47,8 @@ class WebGLSynth {
     this.componentCount = ~~this.options.channelCount;
     this.bufferTime = this.bufferWidth / this.options.sampleRate;
     this.canvas = this.options.canvas;
+    this.maxNotes = this.options.maxNotes;
+    this.maxAttrOfs = 0;
 
     this.webGLSync = [];
 
@@ -107,9 +112,15 @@ class WebGLSynth {
     this.readRmsAvgEngMaxBuffer = new Float32Array(this.lineCount * 4);
 
     this.volumeInfo = { texture:undefined, size:0, bufferWidth: 1024 };
+    this.vertexPullTexture = { texture:undefined, size:0, bufferWidth: 1024 };
 
-    this.zeroShader = this.getProgram(SystemShaders.vertex, SystemShaders.zero);
-    this.mixDownShader = this.getProgram(SystemShaders.vertex, SystemShaders.mixdown);
+    if (vertextPull) {
+      this.zeroShader = this.getProgram(SystemShaders.vertexPull, SystemShaders.zero);
+      this.mixDownShader = this.getProgram(SystemShaders.vertexPull, SystemShaders.mixdown);
+    } else {
+      this.zeroShader = this.getProgram(SystemShaders.vertex, SystemShaders.zero);
+      this.mixDownShader = this.getProgram(SystemShaders.vertex, SystemShaders.mixdown);
+    }
     this.copyLineShader = this.getProgram(SystemShaders.copyLineVertex, SystemShaders.copyLine);
     this.rmsAvgEngMaxValueShader = this.getProgram(SystemShaders.rmsAvgEngMaxVertex, SystemShaders.rmsAvgEngMax);
 
@@ -136,11 +147,16 @@ class WebGLSynth {
     // used for calculating circular buffer positions
     this.processCount = 0;
 
+
     // Attribute buffers for sending to videocard
     // TODO size is way to big, needs a maxtracks
-    this.attributeLineBuffer  = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
-    this.attributeLineBuffer2 = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
-    this.attributeLineBuffer3 = new Float32Array(4096);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    this.attributeLineBuffer = new Float32Array(this.maxNotes * 8);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    if (vertextPull) {
+      this.vertexPullBuffer = new Float32Array(this.maxNotes * (8 + 4 + 4));//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    } else {
+      this.attributeLineBuffer2 = new Float32Array(this.maxNotes * 8);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+      this.attributeLineBuffer3 = new Float32Array(this.maxNotes * 8);//this.bufferHeight * 2 * 4 * this.bufferCount * 2 );
+    }
 
     this.lastBufferLevel = 0;
 
@@ -284,13 +300,13 @@ class WebGLSynth {
 
   getInputProgram(shaderCode) {
     return this.getProgram(
-      SystemShaders.vertex,
+      vertextPull ? SystemShaders.vertexPull : SystemShaders.vertex,
       this.updateSource(shaderCode));
   }
 
   getEffectProgram(shaderCode) {
     return this.getProgram(
-      SystemShaders.vertex,
+      vertextPull ? SystemShaders.vertexPull : SystemShaders.vertex,
       this.updateEffectSource(shaderCode));
   }
 
@@ -524,6 +540,235 @@ class WebGLSynth {
         channelControls.texInfo );
     }
   }
+  /** @param {{ entry: SynthNote, shader:string, isEffect:boolean }[]} tracks */
+  calculateShader_VertexPull(tracks, passNr) {
+    const gl = this.gl;
+
+    const vb = this.vertexPullBuffer;
+    const a2ofs = 8;
+    const a3ofs = 12;
+
+    let channelControl = null
+
+    // Convert track data to attribute data for shader
+    let attrOfs = 0;
+    let backBufferLines = undefined;
+
+    const shaderName = tracks[0].shader;
+    const isEffect = tracks[0].isEffect;
+    // Streambuffer comes from the 1st entry, this should al be the same shader and streambuffer
+    // TODO: Make sure that calculateShader get called per streambuffer instance
+    const streamBuffer = tracks[0].entry.mixer.streamBuffer;
+
+    for (let trackIX = 0; trackIX < tracks.length; trackIX++) {
+      let entry = tracks[trackIX].entry;
+      const tli_out = entry.runBuffers[passNr];
+      // No buffer allocated, can't do anything
+      if (tli_out.start === -1) {
+        continue;
+      }
+
+      let trackLineIx = tli_out.current % this.bufferHeight;
+      let lineY = -1.0 + ((trackLineIx + 0.5) / this.bufferHeight) * 2.0;
+      const controlTime = this.synthTime;// + this.bufferTime * 0.5;
+      // TODO: There is only 1 channel here so we can calculatr this once
+      let pitchRange = entry.channelControl.getControlAtTime(controlTime, otherControls.pitchRange, 2.0) || 2.0;
+      let pitch = entry.channelControl.getControlAtTime(controlTime, otherControls.pitch, 0.0) || 0.0;
+      let playDirection = entry.getPlayDirection(controlTime);
+
+      if (streamBuffer) {
+        if (entry.streamNr < 0) {
+          entry.streamNr = streamBuffer.getStreamNr(entry.note);
+        }
+        streamBuffer.fill(entry, this.synthTime);
+        // console.log('Volume: ',entry.channelControl.getControlAtTime(controlTime , 7, 0.0));
+      }
+      for (let oIX = 0; oIX < tli_out.outputCount; oIX++) {
+        // TODO this now works because of grouping per channel
+        channelControl = entry.channelControl;
+        let outputLineIx = tli_out.getCurrentOutput(oIX) % this.bufferHeight;
+
+        let lineY2 = -1.0 + ((outputLineIx + 0.5) / this.bufferHeight) * 2.0;
+        vb[attrOfs + 0] = this.synthTime - entry.time;
+        vb[attrOfs + 1] = lineY2
+        vb[attrOfs + 3] = entry.releaseTime;
+
+        vb[attrOfs + 4] = this.synthTime - entry.time + this.bufferTime;
+        vb[attrOfs + 5] = lineY2;
+
+        // Only apply time stretching on pass 0 for pitchbends on notes
+        if (passNr !== 0 || oIX !== 0) {
+          vb[attrOfs + 2] = this.synthTime - entry.time;
+          vb[attrOfs + 6] = this.synthTime - entry.time   + this.bufferTime;
+        } else {
+          vb[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
+
+          // Calculation for pitch by timeshift, if we change the frequency in
+          // the shader we would need phase corrections, by stretching time
+          // we avoid this because the shader can just repeat it's stateless
+          // cycle. All intruments get a working pitchbend this way so it seemed
+          // like the best option dispite it being kind off a hack
+          // Calculate the frequency ratio of the normal and bend note
+          // let frequencyRatio = Math.pow(2.0, (entry.note + pitchRange * pitch) / 12.0)
+          //                    / Math.pow(2.0, entry.note / 12.0); // note didn't matter so removed for constant
+          let frequencyRatio = Math.pow(2.0, (12.0 + pitchRange * pitch) / 12.0) / 2.0;
+          // removed constant value / Math.pow(2.0, 12.0 / 12.0);
+          // Get the difference as a fraction of the total time
+          let timeShift = this.bufferTime * (1.0 - frequencyRatio);
+          timeShift += (this.bufferTime - this.bufferTime * playDirection);
+          let bufferLengthInTime = this.bufferTime - timeShift
+
+          vb[attrOfs + 6] = vb[attrOfs + 2] + bufferLengthInTime;
+
+          // if (playDirection < 0.0) {
+          //   let correction = bufferLengthInTime / this.bufferWidth * 1.0;
+          //   a1[attrOfs + 6] -= correction;
+          //   a1[attrOfs + 2] += correction;
+          // }
+
+          // And change the track startTime
+          entry.phaseTime += timeShift;
+        }
+        vb[attrOfs + 7] = entry.releaseTime;
+
+        // Parameters that change per line so they can't be done in uniforms
+        vb[attrOfs + a2ofs + 0] = vb[attrOfs + a2ofs + 4] = (!!streamBuffer) ? entry.streamNr : entry.note;
+        vb[attrOfs + a2ofs + 1] = vb[attrOfs + a2ofs + 5] = entry.velocity;
+
+        entry.updateNoteControls && entry.updateNoteControls(this.synthTime);
+        vb[attrOfs + a2ofs + 2] = entry.lastReleaseVelocity || 0.0;
+        //vb[attrOfs + a2ofs + 6] = entry.newReleaseVelocity || 0.0;
+        vb[attrOfs + a2ofs + 3] = entry.lastAftertouch || 0.0;
+        // vb[attrOfs + a2ofs + 7] = entry.newAftertouch || 0.0;
+
+        if (passNr > 0) {
+          const tli_in = entry.runBuffers[passNr - 1];
+          vb[attrOfs + a3ofs + 0] = tli_in.start;
+          vb[attrOfs + a3ofs + 1] = tli_in.count;
+          vb[attrOfs + a3ofs + 2] = tli_in.current;
+        }
+        vb[attrOfs + a3ofs + 3] = -oIX;//tli_out.backBufferIx;
+
+        attrOfs += 8 + 4 + 4;
+      }
+    }
+
+    // this.vertPullBuffer = gl.updateOrCreateFloatArray(this.vertPullBuffer, vb, attrOfs);
+    this.vertexPullTexture = gl.createOrUpdateFloat32TextureBuffer(
+      vb,
+      this.vertexPullTexture, 0, attrOfs);
+
+    let shader;
+    if (shaderName === mixdownShader) {
+      // TODO: optimize by doing 1st as write and rest with blend
+      // If there is more then 1 track to mixdown, zero output 1st
+      if (attrOfs>8) {
+        gl.disable(gl.BLEND);
+        shader = this.zeroShader;
+        gl.useProgram(shader);
+
+        if (shader.u.vertexPullTexture) {
+          gl.activeTexture(gl.TEXTURE5);
+          gl.bindTexture(gl.TEXTURE_2D, this.vertexPullTexture.texture);
+          gl.uniform1i(shader.u.vertexPullTexture, 5);
+        }
+
+        gl.drawArrays(gl.LINES, 0, 2); // this.bufferHeight * 2);
+
+        // Let blend mix the tracks together
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.enable(gl.BLEND);
+      } else {
+        // Only one just overwrite target
+        gl.disable(gl.BLEND);
+        // gl.enable(gl.BLEND);
+        // gl.blendFunc(gl.ONE, gl.ONE);
+      }
+      shader = this.mixDownShader;
+    } else {
+      gl.disable(gl.BLEND);
+      if (isEffect) {
+        shader = this.getEffectSource(shaderName);
+      } else {
+        shader = this.getInputSource(shaderName);
+      }
+    }
+
+    gl.useProgram(shader);
+
+    shader.u.startTime?.set(this.synthTime);
+    shader.u.processCount?.set(this.processCount);
+
+    // All these tracks should belong to the same channel target for this to work
+    if (channelControl) {
+      this.loadChanelControls(channelControl);
+      if (shader.u.controlTexture) {
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, channelControl.texInfo.texture);
+        gl.uniform1i(shader.u.controlTexture, 2);
+        gl.activeTexture(gl.TEXTURE0);
+      }
+    }
+
+    if (shader.u.backBufferIn) {
+      gl.activeTexture(gl.TEXTURE10);
+      gl.bindTexture(gl.TEXTURE_2D, this.inputBackTexture);
+      gl.uniform1i(shader.u.backBufferIn, 10);
+      gl.activeTexture(gl.TEXTURE0);
+      backBufferLines = new Array(tracks.length);
+      for (let ix = 0; ix < tracks.length; ix++) {
+        const tli_out = tracks[ix].entry.runBuffers[passNr];
+        let backBufferIx = tli_out.backBufferIx;
+        if (backBufferIx === -1) {
+          backBufferIx = (this.currentBackBufferIx++ % this.bufferHeight);
+          tli_out.backBufferIx = backBufferIx;
+          console.log('New backBufferIx: ', backBufferIx);
+        }
+        // TODO: this can clash if another is bufferHeight further, we need a backbuffer administration
+        backBufferLines[ix] = { fromIx: tli_out.current % this.bufferHeight, backBufferIx };
+      }
+
+      gl.drawBuffers([
+        gl.COLOR_ATTACHMENT0,
+        gl.COLOR_ATTACHMENT1
+      ]);
+    } else {
+      gl.drawBuffers([
+        gl.COLOR_ATTACHMENT0
+      ]);
+    }
+
+    if (streamBuffer && streamBuffer.textureInfo.texture) {
+      streamBuffer.update();
+      shader.u.streamBlocks?.set(streamBuffer.streamBlocks);
+      gl.activeTexture(gl.TEXTURE4);
+      gl.bindTexture(gl.TEXTURE_2D, streamBuffer.textureInfo.texture);
+      gl.uniform1i(shader.u.inputTexture, 4);
+    }
+
+    if (shader.u.sampleTextures) {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.sampleTextures[(passNr + 1) & 0x01].texture);
+      gl.uniform1i(shader.u.sampleTextures, 0);
+    }
+
+    // Enable the attributes for the vertex shader and give it our track line coordinates
+    if (shader.u.vertexPullTexture) {
+      gl.activeTexture(gl.TEXTURE5);
+      gl.bindTexture(gl.TEXTURE_2D, this.vertexPullTexture.texture);
+      gl.uniform1i(shader.u.vertexPullTexture, 5);
+    }
+
+    gl.drawArrays(gl.LINES, 0, attrOfs / 8);
+    if (attrOfs > this.maxAttrOfs) {
+      this.maxAttrOfs = attrOfs;
+      console.log('maxAttr: ', this.maxAttrOfs);
+    }
+
+    if (backBufferLines) {
+      this.updateBackBufferLines(backBufferLines);
+    }
+  }
 
   /** @param {{ entry: SynthNote, shader:string, isEffect:boolean }[]} tracks */
   calculateShader(tracks, passNr) {
@@ -755,6 +1000,10 @@ class WebGLSynth {
     }
 
     gl.drawArrays(gl.LINES, 0, attrOfs / 4);
+    if (attrOfs > this.maxAttrOfs) {
+      this.maxAttrOfs = attrOfs;
+      console.log('maxAttr: ', this.maxAttrOfs);
+    }
 
     shader.a.attributes3?.dis();
     shader.a.attributes2?.dis();
@@ -848,6 +1097,10 @@ class WebGLSynth {
     shader.a.vertexPosition.set(this.attrBuffer, 4);
 
     gl.drawArrays(gl.LINES, 0, attrOfs / 4);
+    if (attrOfs > this.maxAttrOfs) {
+      this.maxAttrOfs = attrOfs;
+      console.log('maxAttr2: ', this.maxAttrOfs);
+    }
 
     shader.a.vertexPosition.dis();
   }
@@ -908,6 +1161,10 @@ class WebGLSynth {
     shader.a.vertexPosition.set(this.attrBuffer, 4);
 
     gl.drawArrays(gl.LINES, 0, attrOfs / 4);
+    if (attrOfs > this.maxAttrOfs) {
+      this.maxAttrOfs = attrOfs;
+      console.log('maxAttr3: ', this.maxAttrOfs);
+    }
 
     shader.a.vertexPosition.dis();
   }
@@ -1117,7 +1374,11 @@ class WebGLSynth {
             let tracks = shaderGroup[1];
             shaderLines += tracks.length;
             shaderPasses++;
-            this.calculateShader(tracks, passNr);
+            if (vertextPull) {
+              this.calculateShader_VertexPull(tracks, passNr);
+            } else {
+              this.calculateShader(tracks, passNr);
+            }
           }
         }
       }
