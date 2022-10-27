@@ -22,7 +22,7 @@ const force4Components = true; // Setting to false doesn't give memory saving in
 const useTexStorage = true;
 const mixdownShader = '#mixdown';
 // const vertextPull = true;
-const vertextPull = false;
+const vertextPull = true;
 
 // Got to 3.5GB of memory usage, more seems to crash webgl in the page
 const defaultOptions = {
