@@ -95,12 +95,19 @@ class SynthController {
     // this.webGLSynth.gl.clientWaitSync(this.webGLSynth.webGLSync, 0, 10);
     // this.webGLSynth.getCalculatedSamples();
     // let outOfNotes = false;
+    let releaseTime = 0;
     if (this.analyzeOutputCallback) {
       if (this.webGLSynth.samplesCalculated) {
         this.webGLSynth.getCalculatedSamples(this.processBufferNr);
-        this.analyzeOutputCallback();
-         this.processBufferNr = this.webGLSynth.calculateSamples()
+        if (this.analyzeOutputCallback()) {
+          this.processBufferNr = this.webGLSynth.calculateSamples()
           ++this.analyzeFrameCount;
+          if ((this.processBufferNr & 0x7F) === 0) {
+            releaseTime = 20;
+          }
+        } else {
+          releaseTime = 100;
+        }
       } else {
         this.webGLSynth.calculateSamples()
       }
@@ -118,9 +125,13 @@ class SynthController {
     }
 
     if (!this.haltAnalyze) {
-      defer(() => {
-        this.getNextBuffer();
-      });
+      if (releaseTime <= 0) {
+        defer(() => {
+          this.getNextBuffer();
+        });
+      } else {
+        setTimeout(() => this.getNextBuffer(), releaseTime);
+      }
     } else {
       this.webGLSynth.stopRecordAnalyze();
       console.log('Processed ',this.analyzeFrameCount,' audio frames in ',(performance.now() - this.speedTestStart).toFixed(2),'ms')
@@ -135,6 +146,11 @@ class SynthController {
     this.haltAnalyze = true;
   }
 
+  /**
+   *
+   * @param {() => boolean} cb
+   * @returns
+   */
   async runAnalyze(cb) {
     this.analyzeOutputCallback = cb;
     let result = new Promise((resolve) => {
