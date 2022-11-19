@@ -634,6 +634,10 @@ class SynthPlayData {
         //   entry.synthEnd -= t;
         //   // console.log('tick correct: ',t);
         // }
+        if (entry.synthStart < synthTime) {
+          console.log('to soon', synthTime - entry.synthStart);
+          entry.synthStart= synthTime;
+        }
         entry.phaseTime = entry.synthStart;
         entry.time = entry.synthStart;
         entry.isStarted = true;
