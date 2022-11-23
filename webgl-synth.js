@@ -1566,8 +1566,8 @@ class WebGLSynth {
       correctiveDelta = (oldValue - this.correctiveVolume) / this.floatWidth;
       // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);
     }
+    let clamping = false;
     if (this.automaticVolume) {
-      let clamping = false;
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
         bufferData[ix] *= this.correctiveVolume - correctiveDelta * (this.floatWidth - ix);
@@ -1576,9 +1576,17 @@ class WebGLSynth {
           clamping = true;
         }
       }
-      if (clamping) {
-        console.log('volume to loud, buffer clamped!');
+    } else {
+      for (let ix = 0; ix < this.floatWidth; ix++) {
+        if (Math.abs(bufferData[ix]) > 0.999999) {
+          bufferData[ix] = Math.max(-1.0, Math.min(1.0, bufferData[ix]));
+          clamping = true;
+        }
       }
+    }
+
+    if (clamping) {
+      console.log('volume to loud, buffer clamped!');
     }
 
     if (sharedData) {
