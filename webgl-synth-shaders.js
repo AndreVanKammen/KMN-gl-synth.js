@@ -48,6 +48,11 @@ float getControl(int x) {
   return mix(controlData.x, controlData.z, round(pixel_position.x) / float(bufferWidth));
 }
 
+float getControlNoInterpolation(int x) {
+  vec4 controlData = texelFetch(controlTexture, ivec2(x,0), 0);
+  return controlData.x;
+}
+
 const float sampleTime = (1.0 / float(sampleRate));
 const float bufferTime = (sampleTime * float(bufferWidth));
 
