@@ -656,7 +656,8 @@ vec4 effectMain(void) {
     tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);
   }
-  return tracer / float(bufferWidth) * 2.0;
+  // TODO: Find out why 0.9095969196112138 is necessary for correct volume
+  return tracer / float(bufferWidth) * 2.0 * 0.9095969196112138;
 }
 `,
 "iDFT2": /*glsl*/`// #include effect4

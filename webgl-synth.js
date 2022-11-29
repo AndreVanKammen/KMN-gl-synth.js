@@ -146,7 +146,7 @@ class WebGLSynth {
     // Counter which increases for every outputBuffer
     // used for calculating circular buffer positions
     this.processCount = 0;
-
+    this.lastMaxValue = 0;
 
     // Attribute buffers for sending to videocard
     // TODO size is way to big, needs a maxtracks
@@ -1567,6 +1567,7 @@ class WebGLSynth {
       // console.log(this.maxLevel, this.correctiveVolume, this.maxLevel * this.correctiveVolume);
     }
     let clamping = false;
+    let maxValue = 0.0;
     if (this.automaticVolume) {
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
@@ -1578,15 +1579,24 @@ class WebGLSynth {
       }
     } else {
       for (let ix = 0; ix < this.floatWidth; ix++) {
-        if (Math.abs(bufferData[ix]) > 0.999999) {
-          bufferData[ix] = Math.max(-1.0, Math.min(1.0, bufferData[ix]));
+        const bd = bufferData[ix];
+        const bda = Math.abs(bd);
+        if (Math.abs(bd) > 1.0005) {
           clamping = true;
         }
+        maxValue = Math.max(maxValue,bda);
+        bufferData[ix] = Math.max(-1.0, Math.min(1.0, bd));
       }
     }
 
     if (clamping) {
-      console.log('volume to loud, buffer clamped!');
+      console.log('volume to loud, buffer clamped!, ', maxValue);
+    }
+
+    this.lastMaxValue = Math.max(this.lastMaxValue, maxValue);
+    if (processCount % 10 === 0) {
+      // console.log('maxValue: ', this.lastMaxValue);
+      this.lastMaxValue = maxValue;
     }
 
     if (sharedData) {
