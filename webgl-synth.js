@@ -182,6 +182,7 @@ class WebGLSynth {
 
     this.controls = new WebGLSynthControls();
     this.controls.createDefaultMidiControls();
+    this.outputMultiplier = 1.0;
     // this.controlConverters = {};
     // this.controlConverters[7] = 'pow(10.0, 0.8685889638065035 * log(value))';
   }
@@ -1568,6 +1569,7 @@ class WebGLSynth {
     }
     let clamping = false;
     let maxValue = 0.0;
+    let clampCount = 0;
     if (this.automaticVolume) {
       // this.correctiveVolume = 0.5;
       for (let ix = 0; ix < this.floatWidth; ix++) {
@@ -1579,10 +1581,11 @@ class WebGLSynth {
       }
     } else {
       for (let ix = 0; ix < this.floatWidth; ix++) {
-        const bd = bufferData[ix];
+        const bd = bufferData[ix] * this.outputMultiplier;
         const bda = Math.abs(bd);
         if (Math.abs(bd) > 1.0005) {
           clamping = true;
+          clampCount++;
         }
         maxValue = Math.max(maxValue,bda);
         bufferData[ix] = Math.max(-1.0, Math.min(1.0, bd));
@@ -1590,7 +1593,7 @@ class WebGLSynth {
     }
 
     if (clamping) {
-      console.log('volume to loud, buffer clamped!, ', maxValue);
+      console.log('volume to loud, buffer clamped!, ', maxValue, clampCount);
     }
 
     this.lastMaxValue = Math.max(this.lastMaxValue, maxValue);
