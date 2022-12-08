@@ -209,7 +209,7 @@ export class SynthBaseEntry {
       for (let ix = 0; ix < mixer.effects.length + 1; ix++) {
         let historyTime = 0.0;
         if (ix < mixer.effects.length) {
-          historyTime = mixer.effects[ix].getHistoryTime();
+          historyTime = mixer.effects[ix].getHistoryTime(synth);
         }
 
         let count = ~~Math.ceil(Math.max((historyTime + this.synth.bufferTime) / this.synth.bufferTime, 1));
@@ -259,16 +259,41 @@ export class SynthShaderInfo {
   constructor (shaderName, options) {
     // this.trackLineInfo = new TrackLineInfo();
     this.shaderName = shaderName;
-    this.options = options;
+    this.options = options || {};
   }
 }
 class EffectShaderInfo extends SynthShaderInfo {
   constructor (effectName, options) {
     super(effectName, options)
+    this.checkTimeFromShader = true;
   }
-  getHistoryTime() {
+  /** @param {WebGLSynth} synth */
+  getHistoryTime(synth) {
     // TODO
-    return this.options?.historyTime || 2.0;
+    if (this.checkTimeFromShader) {
+      this.checkTimeFromShader = false;
+
+      let effectShaderStr = synth.getEffectShaderCode(this.shaderName)
+      if (effectShaderStr) {
+        let ix = effectShaderStr.indexOf('#historyTime');
+        if (ix !== -1) {
+          let valStr = '';
+          ix += 12;
+          for (; ix < effectShaderStr.length; ix++) {
+            let c = effectShaderStr[ix];
+            if (c >= '0' && c <= '9' || c === '.') {
+              valStr += c;
+            } else if (c === '\n' || c === '/') {
+              break;
+            }
+          }
+          this.options.historyTime = Number.parseFloat(valStr);
+          console.log('History value: ', valStr);
+        }
+      }
+    }
+
+    return this.options.historyTime || 0.2;
     // return 0.16;
   }
 }
