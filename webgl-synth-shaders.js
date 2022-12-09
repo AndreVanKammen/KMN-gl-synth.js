@@ -131,6 +131,31 @@ vec2 getInputSample(float deltaTime) {
   return startPoint * n + endPoint * (1.0 - n);
 }
 
+vec2 getInputSample(float deltaTime, float spreadTime) {
+  if (deltaTime > 0.0 || deltaTime < float(trackLineInfo.y) * -bufferTime) {
+    return vec2(0.0);
+  }
+
+  float sampleCount = -deltaTime / sampleTime;
+  float sampleCountFloor = floor(sampleCount);
+  float spreadSamples = max(ceil(spreadTime / sampleTime),1.0) * 0.5;
+
+  // startPoint and endPoint when thinking backwards in history
+  float startPoint = (-sampleCountFloor - spreadSamples) * sampleTime;
+  float endPoint = (-sampleCountFloor + spreadSamples) * sampleTime;
+  float pointWidth = endPoint - startPoint;
+
+  vec2 result = vec2(0.0);
+  float weight = 0.0;
+  for (float st = startPoint; st <= endPoint; st += sampleTime) {
+    float w = 0.5 - 0.5 * cos((st - startPoint) / pointWidth * pi2);
+    result += getSingleInputSample(st) * w;
+    weight += w;
+  }
+
+  return result / w;
+}
+
 `;
 
 const SystemShaders = {
