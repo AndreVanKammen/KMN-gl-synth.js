@@ -153,7 +153,7 @@ vec2 getInputSample(float deltaTime, float spreadTime) {
     weight += w;
   }
 
-  return result / w;
+  return result / weight;
 }
 
 `;
