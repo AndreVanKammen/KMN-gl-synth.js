@@ -402,28 +402,36 @@ float getControl(int x) {
 
 // #include controls
 
+vec2 getSample(int sampleNr, int streamVec4Count, int bufStart) {
+  int fragNr = bufStart + (sampleNr / samplesPerVec4) % streamVec4Count;
+
+  vec4 fragVal = texelFetch( inputTexture,
+                              ivec2( fragNr % bufferWidth,
+                                     fragNr / bufferWidth),0);
+
+  return sampleNr % 2 == 0 ? fragVal.xy : fragVal.zw;
+}
+
 void main(void) {
   int streamVec4Count = (streamBlocks * bufferWidth);
-  int streamSampleCount = streamVec4Count * samplesPerVec4;
+  // int streamSampleCount = streamVec4Count * samplesPerVec4;
 
   // int trackOffset = int(note) * trackSize;
   // int sampleNr = int(floor(time * float(sampleRate))) % trackSize;
   // int fragNr = (trackOffset + sampleNr) / channelCount;
-  int sampleNr = int(round(phaseTime * float(streamSampleRate)));
+  float sampleNrFloat = phaseTime * float(streamSampleRate);
+  int sampleNr = int(floor(sampleNrFloat));
   if (sampleNr <0) {
     fragColor = vec4(0.0);
     return;
   }
 
-  int fragNr =
-    int(floor(note)) * streamVec4Count + // buffer start
-    (sampleNr / samplesPerVec4) % streamVec4Count;
+  int bufStart = int(floor(note)) * streamVec4Count;
 
-  vec4 fragVal = texelFetch( inputTexture,
-                             ivec2( fragNr % bufferWidth,
-                                    fragNr / bufferWidth),0);
-
-  vec2 sampleVal = sampleNr % 2 == 0 ? fragVal.xy : fragVal.zw;
+  sampleNrFloat = mod(sampleNrFloat, 1.0);
+  vec2 sampleVal =
+         getSample(sampleNr, streamVec4Count, bufStart) * (1.0 - sampleNrFloat) +
+         getSample(sampleNr + 1, streamVec4Count, bufStart) * sampleNrFloat;
 
   // sampleVal = vec2(sin(time*44.0*pi2));
   // if (time>=releaseTime) {
@@ -922,6 +930,10 @@ vec2 effectMain(void) {
 "delay-1-buffer": /*glsl*/`// #include effect
 vec2 effectMain(void) {
   return getInputSample(-float(bufferWidth) / float(sampleRate));
+}`,
+"delay-half-buffer": /*glsl*/`// #include effect
+vec2 effectMain(void) {
+  return getInputSample(-float(bufferWidth) * 0.5 / float(sampleRate));
 }`,
 "ms delay": /*glsl*/`// #include effect
 vec2 effectMain(void) {

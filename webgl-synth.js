@@ -603,6 +603,11 @@ class WebGLSynth {
           vb[attrOfs + 6] = this.synthTime - entry.time   + this.bufferTime;
         } else {
           vb[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
+          if (streamBuffer) {
+            // Substract from the phaseTime to get more accurate samples
+            vb[attrOfs + 2] = vb[attrOfs + 2] % (streamBuffer.streamFloatSize / this.sampleRate);
+            // console.log(vb[attrOfs + 2]);
+          }
 
           // Calculation for pitch by timeshift, if we change the frequency in
           // the shader we would need phase corrections, by stretching time
@@ -833,6 +838,11 @@ class WebGLSynth {
           a1[attrOfs + 6] = this.synthTime - entry.time   + this.bufferTime;
         } else {
           a1[attrOfs + 2] = this.synthTime - entry.phaseTime + entry.audioOffset;
+          if (streamBuffer) {
+            // Substract from the phaseTime to get more accurate samples
+            a1[attrOfs + 2] = a1[attrOfs + 2] % (streamBuffer.streamFloatSize / this.sampleRate);
+            // console.log(vb[attrOfs + 2]);
+          }
 
           // Calculation for pitch by timeshift, if we change the frequency in
           // the shader we would need phase corrections, by stretching time
