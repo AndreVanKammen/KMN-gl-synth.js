@@ -429,9 +429,10 @@ void main(void) {
   int bufStart = int(floor(note)) * streamVec4Count;
 
   sampleNrFloat = mod(sampleNrFloat, 1.0);
-  vec2 sampleVal =
-         getSample(sampleNr, streamVec4Count, bufStart) * (1.0 - sampleNrFloat) +
-         getSample(sampleNr + 1, streamVec4Count, bufStart) * sampleNrFloat;
+  // TODO find out why +2 matches better
+  vec2 sampleVal = getSample(sampleNr + 2, streamVec4Count, bufStart);
+        //  getSample(sampleNr, streamVec4Count, bufStart) * (1.0 - sampleNrFloat) +
+        //  getSample(sampleNr + 1, streamVec4Count, bufStart) * sampleNrFloat;
 
   // sampleVal = vec2(sin(time*44.0*pi2));
   // if (time>=releaseTime) {
@@ -804,19 +805,13 @@ vec4 effectMain(void) {
     float progress = (float(ix) / (float(sampleWidth)));
     float cycle = n * progress;
     float phase = pi2 * cycle;
+    sampleValue *= (0.5 - 0.5 * cos(clamp(progress*1.0 - 0.0,0.0,1.0) * pi2));
     vec2 v = vec2(cos(-phase),sin(-phase));
 
-    vec4 ft = vec4( v * sampleValue.x,
+    tracer += vec4( v * sampleValue.x,
                     v * sampleValue.y);//  * (f2-f)*0.01;
-    tracer += ft * (0.5 - 0.5 * cos(progress * pi2));
-    tracerCenter += ft * (1.0 - step(0.2,abs(progress-0.5))) * (0.5 - 0.5 * cos((progress * 2.5 - 0.75) * pi2));
   }
-  tracer /= float(sampleWidth);
-  tracerCenter /= float(sampleWidth) / 2.5;
-  vec4 normalized = vec4(normalize(tracer.xy), normalize(tracer.zw));
-  vec2 minLen = vec2(min(length(tracerCenter.xy),length(tracer.xy)),
-                     min(length(tracerCenter.zw),length(tracer.zw)));
-  return vec4(normalized.xy * minLen.x, normalized.zw * minLen.y);
+  return tracer / float(sampleWidth) * 1.0;
 }
 `,
 "DFT_log_analyze": /*glsl*/`// #include effect4
