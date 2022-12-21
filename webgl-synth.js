@@ -138,7 +138,7 @@ class WebGLSynth {
       console.error('EXT_float_blend is not supported on this device which is needed for this software!');
     }
 
-    this.backBufferTestBuffer = new Float32Array(this.bufferWidth * 1 * 4),
+    this.backBufferTestBuffer = new Float32Array(this.bufferWidth * 1 * 4);
 
     // Did we send the data to the videocard?
     this.samplesCalculated = false;
