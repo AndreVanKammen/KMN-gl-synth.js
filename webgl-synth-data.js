@@ -6,14 +6,16 @@ import defer from '../KMN-utils.js/defer.js';
 import { otherControls } from './otherControls.js';
 import { emptyFloat64Array, StreamBuffer } from './stream-buffer.js';
 import { TrackLineInfo } from './webgl-memory-manager.js';
-import { SynthExecutePlanner } from './webgl-synth-execute-plan.js';
+// import { SynthExecutePlanner } from './webgl-synth-execute-plan.js';
+import { defaultHistoryTime, EffectShaderInfo, InputShaderInfo } from './webgl-synth-shader-manager.js';
 import WebGLSynth from './webgl-synth.js';
 
 const maxNoteLength = 1.5 * 3600.0;
 const maxControlCount = 1024;
 // TODO in the case of notes, silence could also end the note, but that is only known at play time
 // TODO this extra time can be calculated from decayTime + max(effectsTime)
-const extraAfterRelease = 4.5; // Give it an extra time to fade out in seconds after release
+const extraAfterRelease = 1.5; // Give it an extra time to fade out in seconds after release
+let synthHash = 1;
 export class ControlBase {
   constructor() {
     // TODO handle defaults trough ControlNames table in datamodel
@@ -157,9 +159,13 @@ export class ControlHandler extends ControlBase {
 // Base for all audio handling classes here
 export class SynthBaseEntry {
   /**
+   * @param {SynthPlayData} owner
    * @param {SynthMixer} mixer
    */
-  constructor (mixer) {
+  constructor(owner, mixer) {
+    this._hash = synthHash++;
+
+    this.owner = owner;
     this.mixer = mixer;
 
     // For use in synth
@@ -168,12 +174,23 @@ export class SynthBaseEntry {
     /** @type {TrackLineInfo[]} */
     this.buffers = [];
 
-    this.synth = null; // Is filled by the synth at process time
+    this._synth = null; // Is filled by the synth at process time
 
     /** @type {{ bufferNr:number, outputNr:number }[]} */
     this.outputs = [];
 
     this._finishResolvers = [];
+  }
+
+  get synth() {
+    return this._synth;
+  }
+
+  set synth(s) {
+    this._synth = s;
+    if (this.mixer) {
+      this.mixer.synth = s;
+    }
   }
 
   setOutputData(bufferNr, outputNr) {
@@ -204,12 +221,18 @@ export class SynthBaseEntry {
     if (mixer && (mixer.effects.length > 0)) {
       let ix;
       while ((ix = this.buffers.length) < (mixer.effects.length + 1)) {
+        let options = {};
+        if (ix === 0) {
+          options = mixer.inputShader?.options || options;
+        } else {
+          options = mixer.effects[ix - 1].options;
+        }
         this.buffers.push(synth.memoryManager.getTrackLineInfo(ix !== 0 ? mixer.effects[ix - 1].options : {}))
       }
       for (let ix = 0; ix < mixer.effects.length + 1; ix++) {
         let historyTime = 0.0;
         if (ix < mixer.effects.length) {
-          historyTime = mixer.effects[ix].getHistoryTime(synth);
+          historyTime = mixer.effects[ix].options.historyTime;
         }
 
         let count = ~~Math.ceil(Math.max((historyTime + this.synth.bufferTime) / this.synth.bufferTime, 1));
@@ -255,54 +278,6 @@ export class SynthBaseEntry {
     this._finishResolvers = [];
   }
 }
-export class SynthShaderInfo {
-  constructor (shaderName, options) {
-    // this.trackLineInfo = new TrackLineInfo();
-    this.shaderName = shaderName;
-    this.options = options || {};
-  }
-}
-class EffectShaderInfo extends SynthShaderInfo {
-  constructor (effectName, options) {
-    super(effectName, options)
-    this.checkTimeFromShader = true;
-  }
-  /** @param {WebGLSynth} synth */
-  getHistoryTime(synth) {
-    // TODO
-    if (this.checkTimeFromShader) {
-      this.checkTimeFromShader = false;
-
-      let effectShaderStr = synth.getEffectShaderCode(this.shaderName)
-      if (effectShaderStr) {
-        let ix = effectShaderStr.indexOf('#historyTime');
-        if (ix !== -1) {
-          let valStr = '';
-          ix += 12;
-          for (; ix < effectShaderStr.length; ix++) {
-            let c = effectShaderStr[ix];
-            if (c >= '0' && c <= '9' || c === '.') {
-              valStr += c;
-            } else if (c === '\n' || c === '/') {
-              break;
-            }
-          }
-          this.options.historyTime = Number.parseFloat(valStr);
-          console.log('History value: ', valStr);
-        }
-      }
-    }
-
-    return this.options.historyTime || 0.2;
-    // return 0.16;
-  }
-}
-class InputShaderInfo extends SynthShaderInfo {
-  constructor (effectName, effectSettings) {
-    super(effectName, effectSettings)
-  }
-}
-
 class IAudioTracks {
   /** @type {(noteEntry: SynthNote, synthTime?:number)=> {left:Float32Array,right:Float32Array}} */
   getData = (noteEntry) => ({ left: emptyFloat64Array, right: emptyFloat64Array });
@@ -312,8 +287,15 @@ let mixerHash = 123;
 /** @type {StreamBuffer} */
 let globalStreamBuffer = null;
 export class SynthMixer extends SynthBaseEntry {
-  constructor (mixer, inputShaderName) {
-    super(mixer);
+  /**
+   * @param {SynthPlayData} owner
+   * @param {SynthMixer} mixer
+   * @param {string} inputShaderName
+   */
+  constructor (owner, mixer, inputShaderName = '') {
+    super(owner, mixer);
+    /** @type {InputShaderInfo} */
+    this.inputShader = null;
     this.inputShaderName = inputShaderName;
     /** @type {Array<EffectShaderInfo>} */
     this.effects = [];
@@ -322,6 +304,16 @@ export class SynthMixer extends SynthBaseEntry {
     // For handling samples and audio tracks
     /** @type {StreamBuffer} */
     this.streamBuffer = null;
+  }
+
+  set inputShaderName(name) {
+    if (name) {
+      this.inputShader = this.owner.shaders.getInputSource(name);
+    }
+  }
+
+  get inputShaderName() {
+    return this.inputShader?.shaderName;
   }
 
   /**
@@ -345,16 +337,27 @@ export class SynthMixer extends SynthBaseEntry {
   }
 
   addEffect(name, options) {
-    this.effects.push(
-      new EffectShaderInfo(name, options))
+    this.effects.push(this.owner.shaders.getEffectSource(name));
+    //  new EffectShaderInfo(name, options))
   }
 
   setEffects(effectShaders) {
     this.effects = [];
     for (let effectShader of effectShaders) {
-      this.effects.push(
-        new EffectShaderInfo(effectShader, {}))
+      this.effects.push(this.owner.shaders.getEffectSource(effectShader));
+      //   new EffectShaderInfo(effectShader))
     }
+  }
+
+  getMaxHistory() {
+    let maxTime = defaultHistoryTime;
+    if (this.mixer) {
+      maxTime = Math.max(maxTime, this.mixer.getMaxHistory());
+    }
+    for (let eff of this.effects) {
+      maxTime = Math.max(maxTime, eff.options.historyTime);
+    }
+    return maxTime;
   }
 }
 class NoteData {
@@ -376,8 +379,7 @@ export class SynthNote extends SynthBaseEntry {
    * @param {ControlBase} channelControl
    */
   constructor (owner, time, timeZone, mixer, data, channelControl) {
-    super(mixer);
-    this.owner = owner;
+    super(owner, mixer);
 
     this.channel = data.channel;
     this.note = data.note;
@@ -388,7 +390,7 @@ export class SynthNote extends SynthBaseEntry {
 
     this.timeZone = timeZone; // TimeZone's are used to sync the different input clocks to synthTime
     this.startTime = time;
-    this.endTime = time + maxNoteLength + extraAfterRelease;
+    this.endTime = time + maxNoteLength;
 
     this.phaseTime = this.owner.convertTime(this.owner.synth.synthTime, time, timeZone);;
 
@@ -432,7 +434,9 @@ export class SynthNote extends SynthBaseEntry {
       this.noteControl.addControl(time, otherControls.releaseVelocity, velocity);
     }
 
-    this.endTime = time + clearNoteAfterTime;
+    this.mixer.synth = this.owner.synth;
+    // TODO: Extra should be based on release time
+    this.endTime = time + clearNoteAfterTime + this.mixer.getMaxHistory();
     this.releaseTime = time - this.startTime;
   }
 
@@ -454,21 +458,25 @@ export class SynthNote extends SynthBaseEntry {
 }
 
 class SynthPlayData {
+  /**
+   *
+   * @param {WebGLSynth} synth
+   */
   constructor (synth) {
 
-    /** @type {WebGLSynth} */
     this.synth = synth;
+    this.shaders = synth.shaders;
 
     this.startIx = 0;
     this.timeOffsets = {};
 
-    this.output = new SynthMixer(null);
+    this.output = new SynthMixer(this, null);
     // this.output.addEffect('
 
     /** @type {Record<number, ControlHandler>} */
     this.channelControls = {};
 
-    this.executePlanner = new SynthExecutePlanner(this);
+    // this.executePlanner = new SynthExecutePlanner(this);
     this.invalidateSceduled = false;
     /** @type {Map<Object,number>}*/
     this.callbacks = new Map();
@@ -493,10 +501,10 @@ class SynthPlayData {
     /** @type {SynthNote[]} */
     this.entries = [];
 
-    /** @type {Array<SynthMixer>}*/
-    this.startMixers = [];
+    // /** @type {Array<SynthMixer>}*/
+    // this.startMixers = [];
 
-    this.invalidatePlan()
+    // this.invalidatePlan()
   }
 
   convertTime(synthTime, inputTime, timeZone) {
@@ -587,32 +595,32 @@ class SynthPlayData {
     return note;
   }
 
-  /**
-   * register a mixer for note entries
-   * @param {SynthMixer} startMixer
-   */
-  registerStartMixer(startMixer) {
-    this.startMixers.push(startMixer);
-    this.invalidatePlan();
-  }
+  // /**
+  //  * register a mixer for note entries
+  //  * @param {SynthMixer} startMixer
+  //  */
+  // registerStartMixer(startMixer) {
+  //   this.startMixers.push(startMixer);
+  //   // this.invalidatePlan();
+  // }
 
-  unRegisterStartMixer(startMixer) {
-    let ix = this.startMixers.indexOf(startMixer);
-    if (ix !== -1) {
-      this.startMixers.splice(ix,1);
-      this.invalidatePlan();
-    }
-  }
+  // unRegisterStartMixer(startMixer) {
+  //   let ix = this.startMixers.indexOf(startMixer);
+  //   if (ix !== -1) {
+  //     this.startMixers.splice(ix,1);
+  //     // this.invalidatePlan();
+  //   }
+  // }
 
-  invalidatePlan() {
-    if (!this.invalidateSceduled) {
-      this.invalidateSceduled = true;
-      defer(() => {
-        this.executePlanner.rebuild();
-        this.invalidateSceduled = false;
-      });
-    }
-  }
+  // invalidatePlan() {
+  //   if (!this.invalidateSceduled) {
+  //     this.invalidateSceduled = true;
+  //     defer(() => {
+  //       this.executePlanner.rebuild();
+  //       this.invalidateSceduled = false;
+  //     });
+  //   }
+  // }
 
   addControl (time, timeZone, channel, controlType, value) {
     if (time===-1) {

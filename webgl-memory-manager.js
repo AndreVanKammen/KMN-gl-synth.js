@@ -70,12 +70,12 @@ export class WebGLMemoryManager {
   }
 }
 
-// Class for keeping the buffer administration 
+// Class for keeping the buffer administration
 // A buffer index points to the Y of the texture which is a line with [bufferWidth] of samples
 export class TrackLineInfo {
   /**
    * Creates an object to ke3ep track of the buffers for shader in / out
-   * @param {WebGLMemoryManager} memoryManager 
+   * @param {WebGLMemoryManager} memoryManager
    */
   constructor (memoryManager, options) {
     this.memoryManager = memoryManager
@@ -84,7 +84,7 @@ export class TrackLineInfo {
     this.passNr = ~~0;      // Which pass are we processed in (this determines if we use buffer A or B)
     this.start = ~~0;       // The start of it's buffers
     this.count = ~~0;       // The total number of buffers including outputCount
-    this.outputCount = this.options?.outputCount || ~~1; // The number of future buffers that can't be used for history (if sampleData
+    this.outputCount = ~~this.options?.outputCount || ~~1; // The number of future buffers that can't be used for history (if sampleData
                             // The number of Frequency output buffers if DFT
                             // they are used for constructing audio from inverse DFT with overlaps
                             // A shader with this TLI as output should be rendered for this many lines
@@ -101,7 +101,6 @@ export class TrackLineInfo {
     // frequency data: render to 0..3 disable blendMode to overwrite
     //                 current = start + (processCount * outputCount) % count
     //                 count should be multiple of outputCount
-
     // Can be calculated
     this.current = ~~0;  // The entry that is to be used for the current run
 
@@ -127,7 +126,7 @@ export class TrackLineInfo {
       }
 
       this.start = this.memoryManager.getFreeBufferLines(passNr, count);
-      this.passNr = passNr;      
+      this.passNr = passNr;
       this.count = count;
       this.updateCurrent();
       return true;

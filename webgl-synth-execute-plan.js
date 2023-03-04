@@ -1,10 +1,14 @@
-import SynthPlayData, { SynthShaderInfo } from "./webgl-synth-data.js";
+// This is a new piece of code ment to get better performance for managing shaders and memory
+// It is unfinished and not in use
+
+import SynthPlayData from "./webgl-synth-data.js";
+import { SynthShaderInfo } from "./webgl-synth-shader-manager.js";
 class ShaderNode {
   /**
    * A node for a shader
    * @param {ShaderPath} path
-   * @param {string} shaderName 
-   * @param {boolean} isStart 
+   * @param {string} shaderName
+   * @param {boolean} isStart
    * @param {SynthShaderInfo} shaderInfo
    */
   constructor(path, shaderName, isStart, shaderInfo) {
@@ -14,7 +18,7 @@ class ShaderNode {
     this.shaderName = shaderName;
     this.isStart = isStart;
     this.shaderInfo = shaderInfo;
-    
+
     this.startPassNr = -1;
     this.maxPassNr = -1;
     this.preferredStartPassNr = -1;
@@ -72,7 +76,7 @@ class ShaderPath {
 class PlanLine {
   /**
    * One line of execution
-   * @param {SynthExecutePlanner} planner 
+   * @param {SynthExecutePlanner} planner
    */
   constructor(planner) {
     this.planner = planner;
@@ -90,8 +94,8 @@ class PlanLine {
 export class SynthExecutePlanner {
 
   /**
-   * 
-   * @param {SynthPlayData} playData 
+   *
+   * @param {SynthPlayData} playData
    */
   constructor(playData) {
     this.playData = playData;
@@ -271,7 +275,7 @@ export class SynthExecutePlanner {
     this.buildShaderPlan();
     this.assignPassNrs();
 
-    // Define batches per pass, grouped by same shader. 
+    // Define batches per pass, grouped by same shader.
     this.buildBatches();
 
     // TODO: alocate buffers, group buffer by target for one run to output (multiple piano's in same target buffer)
@@ -290,7 +294,7 @@ export class SynthExecutePlanner {
     // TODO: update input buffers for number of inputs playing
 
     // TODO: Update setting buffers
-    // TODO: Update control buffers 
+    // TODO: Update control buffers
 
     // TODO: Update trackData time, phaseTime(once per channel)
     // TODO: For all passes do all batches then all measures

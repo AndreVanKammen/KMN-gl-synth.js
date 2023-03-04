@@ -7,8 +7,8 @@ import SystemShaders from './webgl-synth-shaders.js';
 import SynthPlayData, { ControlHandler, ControlBase, SynthBaseEntry, SynthMixer, SynthNote } from './webgl-synth-data.js';
 import { otherControls } from './otherControls.js';
 import { TrackLineInfo, WebGLMemoryManager } from './webgl-memory-manager.js';
-import { WebGLSynthControls } from './webgl-synth-controls.js';
 import { AudioOutputSharedData } from './audio-worklet-shared.js';
+import { SynthShaderManager, vertextPull } from './webgl-synth-shader-manager.js';
 
 // https://stackoverflow.com/questions/53562825/glreadpixels-fails-under-webgl2-in-chrome-on-mac
 // Fix needed for Linux Mac & android
@@ -22,7 +22,6 @@ const force4Components = true; // Setting to false doesn't give memory saving in
 const useTexStorage = true;
 const mixdownShader = '#mixdown';
 // const vertextPull = true;
-const vertextPull = true;
 
 // Got to 3.5GB of memory usage, more seems to crash webgl in the page
 const defaultOptions = {
@@ -77,6 +76,7 @@ class WebGLSynth {
     this.averageRead = 1.0;
 
     let gl = (this.gl = getWebGLContext(this.canvas, { alpha: true }));
+    this.shaders = new SynthShaderManager(this);
 
     // const formatIndex = this.componentCount - 1;
     // TODO: set all to 4 components
@@ -115,17 +115,14 @@ class WebGLSynth {
     this.vertexPullTexture = { texture:undefined, size:0, bufferWidth: 1024 };
 
     if (vertextPull) {
-      this.zeroShader = this.getProgram(SystemShaders.vertexPull, SystemShaders.zero);
-      this.mixDownShader = this.getProgram(SystemShaders.vertexPull, SystemShaders.mixdown);
+      this.zeroShader = this.shaders.getProgram(SystemShaders.vertexPull, SystemShaders.zero);
+      this.mixDownShader = this.shaders.getProgram(SystemShaders.vertexPull, SystemShaders.mixdown);
     } else {
-      this.zeroShader = this.getProgram(SystemShaders.vertex, SystemShaders.zero);
-      this.mixDownShader = this.getProgram(SystemShaders.vertex, SystemShaders.mixdown);
+      this.zeroShader = this.shaders.getProgram(SystemShaders.vertex, SystemShaders.zero);
+      this.mixDownShader = this.shaders.getProgram(SystemShaders.vertex, SystemShaders.mixdown);
     }
-    this.copyLineShader = this.getProgram(SystemShaders.copyLineVertex, SystemShaders.copyLine);
-    this.rmsAvgEngMaxValueShader = this.getProgram(SystemShaders.rmsAvgEngMaxVertex, SystemShaders.rmsAvgEngMax);
-
-    this.shaderPrograms = {};
-    this.effectPrograms = {};
+    this.copyLineShader = this.shaders.getProgram(SystemShaders.copyLineVertex, SystemShaders.copyLine);
+    this.rmsAvgEngMaxValueShader = this.shaders.getProgram(SystemShaders.rmsAvgEngMaxVertex, SystemShaders.rmsAvgEngMax);
 
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.DEPTH_TEST);
@@ -180,8 +177,6 @@ class WebGLSynth {
 
     this.addBackBufferToSampleFBO(); // 20ms< for 1000 times
 
-    this.controls = new WebGLSynthControls();
-    this.controls.createDefaultMidiControls();
     this.outputMultiplier = 1.0;
     // this.controlConverters = {};
     // this.controlConverters[7] = 'pow(10.0, 0.8685889638065035 * log(value))';
@@ -223,161 +218,6 @@ class WebGLSynth {
     this.recordAnalyzeBuffer = null;
   }
 
-//#region "Shader stuff"
-// ******************************************
-// ****** Shader loading and compiling ******
-// ******************************************
-  getDefaultDefines() {
-    let resultStr = `
-#define bufferHeight ${~~this.bufferHeight}
-#define bufferWidth ${~~this.bufferWidth}
-#define bufferCount ${~~(this.bufferCount / 2)}
-#define sampleRate ${~~this.sampleRate}
-`;
-    return resultStr;
-  }
-
-  updateSource(shaderCode) {
-    let subShader = '';
-    if (shaderCode.indexOf('#include waveform')!==-1) {
-      subShader = shaderCode;
-    } else if (shaderCode.indexOf('#include formula')!==-1) {
-      subShader =
-      `vec2 waveform(float frequency, float phase) {
-         return vec2(
-           ${shaderCode}
-         );
-      }`;
-    } else if (shaderCode.indexOf('#include shadertoy')!==-1) {
-      // TODO: lot of clashing variable names, so maybe dedicated shadertoy version?
-      subShader =
-      `${shaderCode}
-
-      vec2 waveform(float frequency, float phase) {
-         return mainSound(time);
-      }`;
-    } else {
-      return this.updateControlsInSource(shaderCode);
-    }
-    return this.updateControlsInSource(
-      SystemShaders.waveform.replace('{WaveformFunction}', subShader));
-  }
-
-  updateEffectSource(shaderCode) {
-    if (shaderCode.indexOf('#include effect') !== -1) {
-      let subShader = shaderCode;
-      if (shaderCode.indexOf('#include effect4') !== -1) {
-        shaderCode = SystemShaders.effect4.replace('{EffectFunction}', subShader);
-      } else {
-        shaderCode = SystemShaders.effect.replace('{EffectFunction}', subShader);
-      }
-    }
-    return this.updateControlsInSource(shaderCode);
-  }
-
-  /**
-   *
-   * @param {string} shaderCode
-   */
-  updateControlsInSource(shaderCode) {
-    let ix = shaderCode.indexOf('#include controls');
-    if (ix !== -1) {
-      let ix2 = shaderCode.indexOf('\n', ix) + 1;
-      return shaderCode.substring(0, ix2) + this.controls.getControlsShaderCode(shaderCode) + shaderCode.substring(ix2);
-    }
-    return shaderCode;
-  }
-
-  /**
-   * Get program with default defines added
-   * @param {*} vertexSrc
-   * @param {*} framentSrc
-   */
-  getProgram(vertexSrc,framentSrc) {
-    return this.gl.getShaderProgram(
-      this.getDefaultDefines() + vertexSrc,
-      this.getDefaultDefines() + framentSrc, 2);
-  }
-
-  getInputProgram(shaderCode) {
-    return this.getProgram(
-      vertextPull ? SystemShaders.vertexPull : SystemShaders.vertex,
-      this.updateSource(shaderCode));
-  }
-
-  getEffectProgram(shaderCode) {
-    return this.getProgram(
-      vertextPull ? SystemShaders.vertexPull : SystemShaders.vertex,
-      this.updateEffectSource(shaderCode));
-  }
-
-  getInputSource(shaderName) {
-    let shader = this.shaderPrograms[shaderName];
-    if (shader) {
-      return shader;
-    }
-    let shaderCode = this.getSynthShaderCode(shaderName); // SynthShaders[shaderName];
-    if (shaderCode) {
-      shader = this.getInputProgram(shaderCode);
-      this.shaderPrograms[shaderName] = shader;
-      return shader;
-    }
-    if (shaderName ) {
-       console.warn('Input shader not found: ',shaderName);
-    }
-    return null;
-  }
-
-  getEffectSource(shaderName) {
-    let shader = this.effectPrograms[shaderName];
-    if (shader) {
-      return shader;
-    }
-    let shaderCode = this.getEffectShaderCode(shaderName); // EffectShaders[shaderName];
-    if (shaderCode) {
-      shader = this.getEffectProgram(shaderCode);
-      this.effectPrograms[shaderName] = shader;
-      return shader;
-    }
-    if (shaderName ) {
-       console.warn('Effect shader not found: ',shaderName);
-    }
-    return null;
-  }
-
-  compileShader (type, name, source, options) {
-    if (type==='effect') {
-      return this.compileEffect (name, source, options)
-    } else {
-      return this.compileSynth (name, source, options)
-    }
-  }
-
-  compileSynth (name, source, options) {
-    // return this.webgl.compileShader (source, options)
-    const compileInfo = this.gl.getCompileInfo(this.getDefaultDefines() + this.updateSource(source), this.gl.FRAGMENT_SHADER, 2);
-    if (compileInfo.compileStatus) {
-      this.shaderPrograms[name] = this.getInputProgram(source);
-      console.info('Synth shader compiled OK');
-    } else {
-      console.log('Shader error: ',compileInfo);
-    }
-    return compileInfo
-  }
-
-  compileEffect (name, source, options) {
-    // return this.webgl.compileShader (source, options)
-    const compileInfo = this.gl.getCompileInfo(this.getDefaultDefines() + this.updateEffectSource(source), this.gl.FRAGMENT_SHADER, 2);
-    if (compileInfo.compileStatus) {
-      this.effectPrograms[name] = this.getEffectProgram(source);
-      // this.copyShader = this.gl.getShaderProgram(SystemShaders.vertex, src, 2);
-      console.info('Effect shader compiled OK');
-    } else {
-      console.log('Shader error: ',compileInfo);
-    }
-    return compileInfo
-  }
-// #endregion
 
 // #region "Texture and buffer creation"
 // ******************************************
@@ -584,6 +424,9 @@ class WebGLSynth {
         streamBuffer.fill(entry, this.synthTime);
         // console.log('Volume: ',entry.channelControl.getControlAtTime(controlTime , 7, 0.0));
       }
+      if (tli_out.outputCount > 1) {
+        console.log('synth outputcount: ', tli_out.outputCount);
+      }
       for (let oIX = 0; oIX < tli_out.outputCount; oIX++) {
         // TODO this now works because of grouping per channel
         channelControl = entry.channelControl;
@@ -694,9 +537,9 @@ class WebGLSynth {
     } else {
       gl.disable(gl.BLEND);
       if (isEffect) {
-        shader = this.getEffectSource(shaderName);
+        shader = this.shaders.getEffectSource(shaderName).program;
       } else {
-        shader = this.getInputSource(shaderName);
+        shader = this.shaders.getInputSource(shaderName).program;
       }
     }
 
@@ -933,9 +776,9 @@ class WebGLSynth {
     } else {
       gl.disable(gl.BLEND);
       if (isEffect) {
-        shader = this.getEffectSource(shaderName);
+        shader = this.shaders.getEffectSource(shaderName).program;
       } else {
-        shader = this.getInputSource(shaderName);
+        shader = this.shaders.getInputSource(shaderName).program;
       }
     }
 

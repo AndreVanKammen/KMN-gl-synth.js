@@ -33,7 +33,8 @@ class SynthController {
 
     this.audioInput = undefined;
     this.audioOutput = undefined;
-    this.webGLSynth = undefined;
+    /** @type {WebGLSynth} */
+    this.webGLSynth = null;
 
     this.playData = null;
 

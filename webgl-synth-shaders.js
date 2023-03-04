@@ -776,6 +776,7 @@ vec4 effectMain(void) {
 }
 `,
 "DFT_log_8": /*glsl*/`// #include effect4
+// #outputCount 8
 
 uniform sampler2D backBufferIn;
 uniform int processCount;
